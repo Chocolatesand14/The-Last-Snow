@@ -36,7 +36,7 @@ export class Game {
             this.world.height
         );
 
-        // Center the camera on the player
+        // Instantly center the camera on the player
         this.camera.follow(this.player);
 
         this.lastTime = null;
@@ -87,8 +87,8 @@ export class Game {
             this.player.y = nextY;
         }
 
-        // Update the camera after resolving collisions
-        this.camera.follow(this.player);
+        // Smoothly update the camera after resolving collisions
+        this.camera.follow(this.player, deltaTime);
     }
 
     draw() {
@@ -102,7 +102,7 @@ export class Game {
         // Save the current canvas state
         this.ctx.save();
 
-        // Apply the camera offset
+        // Apply the camera offset using whole pixels
         this.ctx.translate(
             -Math.round(this.camera.x),
             -Math.round(this.camera.y)
