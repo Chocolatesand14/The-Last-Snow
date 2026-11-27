@@ -64,6 +64,11 @@ export class TileMap {
     }
 
     isWalkable(x, y) {
+        // Reject invalid coordinates
+        if (!Number.isFinite(x) || !Number.isFinite(y)) {
+            return false;
+        }
+
         // Convert pixel coordinates to tile coordinates
         const column = Math.floor(x / this.tileSize);
         const row = Math.floor(y / this.tileSize);
@@ -80,7 +85,58 @@ export class TileMap {
 
         const tile = this.tiles[row][column];
 
+        // Only snow and paths are walkable
         return tile === 0 || tile === 2;
+    }
+
+    canMoveTo(x, y, width, height) {
+        // Prevent the player from leaving the world
+        if (
+            x < 0 ||
+            y < 0 ||
+            x + width > this.width ||
+            y + height > this.height
+        ) {
+            return false;
+        }
+
+        // Create a collision box around the player's feet
+        const collisionWidth = width / 2;
+        const collisionHeight = height / 3;
+
+        const left = x + (width - collisionWidth) / 2;
+        const right = left + collisionWidth - 1;
+
+        const top = y + height - collisionHeight;
+        const bottom = y + height - 1;
+
+        // Check every tile covered by the collision box
+        const startColumn = Math.floor(left / this.tileSize);
+        const endColumn = Math.floor(right / this.tileSize);
+        const startRow = Math.floor(top / this.tileSize);
+        const endRow = Math.floor(bottom / this.tileSize);
+
+        for (let row = startRow; row <= endRow; row++) {
+            for (
+                let column = startColumn;
+                column <= endColumn;
+                column++
+            ) {
+                if (!this.isWalkable(
+                    column * this.tileSize,
+                    row * this.tileSize
+                )) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    isPath(column, row) {
+        // Check whether a neighboring tile is a path
+        return this.tiles[row]?.[column] === 2;
     }
 
     render(ctx) {
@@ -123,10 +179,84 @@ export class TileMap {
         ctx.fillStyle = "#e1eaf0";
         ctx.fillRect(x, y, size, size);
 
-        // Draw snowy path
+        // Draw connected snowy paths
         if (tile === 2) {
-            ctx.fillStyle = "#b1bfcc";
-            ctx.fillRect(x, y, size, size);
+            this.drawPath(ctx, x, y);
+        }
+    }
+
+    drawPath(ctx, x, y) {
+        const size = this.tileSize;
+        const center = size / 2;
+
+        const column = Math.floor(x / size);
+        const row = Math.floor(y / size);
+
+        // Check connected path tiles
+        const top =
+            row === 0 || this.isPath(column, row - 1);
+
+        const bottom =
+            this.isPath(column, row + 1);
+
+        const left =
+            this.isPath(column - 1, row);
+
+        const right =
+            this.isPath(column + 1, row);
+
+        // Render the path using small pixel blocks
+        for (let py = 0; py < size; py += 2) {
+            for (let px = 0; px < size; px += 2) {
+                const dx = Math.abs(px + 1 - center);
+                const dy = Math.abs(py + 1 - center);
+
+                let distance = Math.hypot(dx, dy);
+
+                // Connect the path to neighboring tiles
+                if (top && py < center) {
+                    distance = Math.min(distance, dx);
+                }
+
+                if (bottom && py >= center) {
+                    distance = Math.min(distance, dx);
+                }
+
+                if (left && px < center) {
+                    distance = Math.min(distance, dy);
+                }
+
+                if (right && px >= center) {
+                    distance = Math.min(distance, dy);
+                }
+
+                // Generate consistent pixel variation
+                const noise =
+                    ((x + px) * 13 + (y + py) * 7) % 17;
+
+                // Draw compacted snow
+                if (distance <= 9) {
+                    ctx.fillStyle = noise < 3
+                        ? "#bacbda"
+                        : "#b0c2d2";
+                }
+
+                // Draw soft snowy edges
+                else if (distance <= 11) {
+                    ctx.fillStyle = "#c5d4e0";
+                }
+
+                // Draw irregular outer snow pixels
+                else if (distance <= 13 + noise % 2) {
+                    ctx.fillStyle = "#d4e0e9";
+                }
+
+                else {
+                    continue;
+                }
+
+                ctx.fillRect(x + px, y + py, 2, 2);
+            }
         }
     }
 

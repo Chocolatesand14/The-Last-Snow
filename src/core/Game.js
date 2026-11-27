@@ -36,24 +36,44 @@ export class Game {
     }
 
     update(deltaTime) {
+        // Store the previous player position
+        const previousX = this.player.x;
+        const previousY = this.player.y;
+
+        // Update player movement and animations
         this.player.update(this.input, deltaTime);
 
-        // Keep the player inside the world boundaries
-        this.player.x = Math.max(
-            0,
-            Math.min(
-                this.player.x,
-                this.world.width - this.player.width
-            )
-        );
+        // Store the requested player position
+        const nextX = this.player.x;
+        const nextY = this.player.y;
 
-        this.player.y = Math.max(
-            0,
-            Math.min(
+        // Restore the previous player position
+        this.player.x = previousX;
+        this.player.y = previousY;
+
+        // Check horizontal collision
+        if (
+            this.world.canMoveTo(
+                nextX,
                 this.player.y,
-                this.world.height - this.player.height
+                this.player.width,
+                this.player.height
             )
-        );
+        ) {
+            this.player.x = nextX;
+        }
+
+        // Check vertical collision
+        if (
+            this.world.canMoveTo(
+                this.player.x,
+                nextY,
+                this.player.width,
+                this.player.height
+            )
+        ) {
+            this.player.y = nextY;
+        }
     }
 
     draw() {
@@ -75,7 +95,10 @@ export class Game {
         // Calculate time between frames
         const deltaTime = this.lastTime === null
             ? 0
-            : Math.min((timestamp - this.lastTime) / 1000, 0.1);
+            : Math.min(
+                (timestamp - this.lastTime) / 1000,
+                0.1
+            );
 
         this.lastTime = timestamp;
 
