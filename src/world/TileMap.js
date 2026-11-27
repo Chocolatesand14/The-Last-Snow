@@ -143,60 +143,115 @@ export class TileMap {
         return this.tiles[row]?.[column] === 2;
     }
 
-    renderGround(ctx) {
-        // Disable smoothing to preserve pixel art
+    getVisibleTileBounds(camera = null, padding = 0) {
+        if (!camera) {
+            return {
+                startColumn: 0, endColumn: this.columns - 1,
+                startRow: 0, endRow: this.rows - 1
+            };
+        }
+
+        // Match the rounded camera offset used by Game
+        const x = Math.round(camera.x);
+        const y = Math.round(camera.y);
+
+        return {
+            startColumn: Math.max(0, Math.floor((x - padding) / this.tileSize)),
+            endColumn: Math.min(this.columns - 1, Math.ceil((x + camera.width + padding) / this.tileSize) - 1),
+            startRow: Math.max(0, Math.floor((y - padding) / this.tileSize)),
+            endRow: Math.min(this.rows - 1, Math.ceil((y + camera.height + padding) / this.tileSize) - 1)
+        };
+    }
+
+    isVisible(x, y, width, height, camera = null) {
+        if (!camera) return true;
+
+        const cameraX = Math.round(camera.x);
+        const cameraY = Math.round(camera.y);
+
+        // Check for an intersection with the viewport
+        return (
+            x < cameraX + camera.width &&
+            x + width > cameraX &&
+            y < cameraY + camera.height &&
+            y + height > cameraY
+        );
+    }
+
+    renderGround(ctx, camera = null) {
         ctx.imageSmoothingEnabled = false;
 
-        // Render ground and paths first
-        for (let row = 0; row < this.rows; row++) {
-            for (let column = 0; column < this.columns; column++) {
-                const tile = this.tiles[row][column];
-                const x = column * this.tileSize;
-                const y = row * this.tileSize;
+        const { startColumn, endColumn, startRow, endRow } =
+            this.getVisibleTileBounds(camera);
 
-                this.drawTile(ctx, tile, x, y);
+        // Render only visible ground tiles
+        for (let row = startRow; row <= endRow; row++) {
+            for (let column = startColumn; column <= endColumn; column++) {
+                this.drawTile(
+                    ctx, this.tiles[row][column],
+                    column * this.tileSize, row * this.tileSize
+                );
             }
         }
     }
 
-    getRenderables() {
+    getRenderables(camera = null) {
         const renderables = [];
 
-        // Collect environment objects for depth sorting
-        for (let row = 0; row < this.rows; row++) {
-            for (let column = 0; column < this.columns; column++) {
+        // Include oversized sprites whose base is outside the viewport
+        const padding = Math.max(
+            this.tileSize, 32,
+            ...this.treeSprites.map(tree => Math.max(tree.width, tree.height))
+        );
+        const { startColumn, endColumn, startRow, endRow } =
+            this.getVisibleTileBounds(camera, padding);
+
+        for (let row = startRow; row <= endRow; row++) {
+            for (let column = startColumn; column <= endColumn; column++) {
                 const tile = this.tiles[row][column];
                 const x = column * this.tileSize;
                 const y = row * this.tileSize;
                 const depth = y + this.tileSize;
 
                 if (tile === 1) {
-                    renderables.push({
-                        depth,
-                        draw: (ctx) => this.drawPineTree(ctx, x, y)
-                    });
+                    const index = (column * 7 + row * 13) % this.treeSprites.length;
+                    const tree = this.treeSprites[index];
+                    const drawX = Math.round(x + (this.tileSize - tree.width) / 2);
+                    const drawY = depth - tree.height;
+
+                    // Include both sprite and fallback bounds
+                    if (this.isVisible(drawX, drawY, tree.width, tree.height, camera) ||
+                        this.isVisible(x + 2, y - 10, 28, 40, camera)) {
+                        renderables.push({
+                            depth,
+                            draw: (ctx) => this.drawPineTree(ctx, x, y)
+                        });
+                    }
                 }
 
                 if (tile === 3) {
-                    renderables.push({
-                        depth,
-                        draw: (ctx) => this.drawRock(ctx, x, y)
-                    });
+                    const drawX = Math.round(x + (this.tileSize - 32) / 2);
+                    if (this.isVisible(drawX, depth - 32, 32, 32, camera) ||
+                        this.isVisible(x + 6, y + 12, 20, 14, camera)) {
+                        renderables.push({
+                            depth,
+                            draw: (ctx) => this.drawRock(ctx, x, y)
+                        });
+                    }
                 }
             }
         }
 
         return [
             ...renderables,
-            ...this.decorationLayer.getRenderables()
+            ...this.decorationLayer.getRenderables(camera)
         ];
     }
 
-    render(ctx) {
-        // Render the complete world without the player
-        this.renderGround(ctx);
-
-        const renderables = this.getRenderables();
+    render(ctx, camera = null) {
+        // Render ground first, then depth-sorted objects
+        this.renderGround(ctx, camera);
+        const renderables = this.getRenderables(camera);
         renderables.sort((a, b) => a.depth - b.depth);
 
         for (const object of renderables) {

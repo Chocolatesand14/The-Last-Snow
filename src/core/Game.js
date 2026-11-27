@@ -108,11 +108,13 @@ export class Game {
             -Math.round(this.camera.y)
         );
 
-        // Draw the ground and paths first
-        this.world.renderGround(this.ctx);
+        // Render only visible ground tiles and paths
+        this.world.renderGround(this.ctx, this.camera);
 
-        // Collect all environment objects
-        const renderables = this.world.getRenderables();
+        // Collect visible environment objects
+        const renderables = this.world.getRenderables(
+            this.camera
+        );
 
         // Add the player to the rendering queue
         renderables.push({
@@ -123,7 +125,7 @@ export class Game {
         // Sort objects by their bottom Y position
         renderables.sort((a, b) => a.depth - b.depth);
 
-        // Draw objects from back to front
+        // Draw visible objects from back to front
         for (const object of renderables) {
             object.draw(this.ctx);
         }
