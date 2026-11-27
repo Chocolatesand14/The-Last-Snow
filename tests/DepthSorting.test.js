@@ -12,29 +12,31 @@ describe("Depth Sorting", () => {
 
     describe("Environment renderables", () => {
         it("should return environment objects", () => {
-            const renderables = map.getRenderables();
-
-            expect(renderables.length).toBeGreaterThan(0);
+            expect(map.getRenderables().length)
+                .toBeGreaterThan(0);
         });
 
-        it("should only include trees and rocks", () => {
-            const expectedCount = SnowyForest.tiles
+        it("should include trees, rocks and decorations", () => {
+            const environmentCount = SnowyForest.tiles
                 .flat()
                 .filter(tile => tile === 1 || tile === 3)
                 .length;
 
-            expect(map.getRenderables().length)
-                .toBe(expectedCount);
+            const decorationCount =
+                map.decorationLayer.decorations.length;
+
+            expect(map.getRenderables()).toHaveLength(
+                environmentCount + decorationCount
+            );
         });
 
         it("should assign a valid depth to every object", () => {
-            const renderables = map.getRenderables();
-
-            for (const object of renderables) {
+            for (const object of map.getRenderables()) {
                 expect(Number.isFinite(object.depth))
                     .toBe(true);
 
                 expect(object.depth).toBeGreaterThan(0);
+
                 expect(object.depth)
                     .toBeLessThanOrEqual(map.height);
             }
@@ -45,23 +47,48 @@ describe("Depth Sorting", () => {
                 tileSize: 32,
                 spawnPoint: { x: 0, y: 0 },
                 tiles: [
-                    [0, 0],
-                    [0, 1],
-                    [3, 0]
+                    [1, 3],
+                    [3, 1]
                 ]
             });
 
-            const renderables = testMap.getRenderables();
+            const depths = testMap.getRenderables()
+                .map(object => object.depth);
 
-            expect(renderables.map(object => object.depth))
-                .toEqual([64, 96]);
+            expect(depths).toEqual([32, 32, 64, 64]);
         });
 
         it("should provide a draw function for every object", () => {
-            const renderables = map.getRenderables();
-
-            for (const object of renderables) {
+            for (const object of map.getRenderables()) {
                 expect(typeof object.draw).toBe("function");
+            }
+        });
+    });
+
+    describe("Decoration integration", () => {
+        it("should include decoration renderables", () => {
+            const decoration = {
+                depth: 96,
+                draw: vi.fn()
+            };
+
+            vi.spyOn(map.decorationLayer, "getRenderables")
+                .mockReturnValue([decoration]);
+
+            expect(map.getRenderables())
+                .toContain(decoration);
+        });
+
+        it("should keep decoration tiles walkable", () => {
+            expect(map.decorationLayer.decorations.length)
+                .toBeGreaterThan(0);
+
+            for (const decoration of
+                map.decorationLayer.decorations) {
+
+                expect(
+                    map.isWalkable(decoration.x, decoration.y)
+                ).toBe(true);
             }
         });
     });
@@ -98,24 +125,50 @@ describe("Depth Sorting", () => {
                 .mockReturnValue([
                     {
                         depth: 128,
-                        draw: () => order.push("front")
+                        draw: () => order.push("tree")
                     },
                     {
                         depth: 32,
-                        draw: () => order.push("back")
+                        draw: () => order.push("rock")
                     },
                     {
                         depth: 64,
-                        draw: () => order.push("middle")
+                        draw: () => order.push("decoration")
                     }
                 ]);
 
             map.render({});
 
             expect(order).toEqual([
-                "back",
-                "middle",
-                "front"
+                "rock",
+                "decoration",
+                "tree"
+            ]);
+        });
+
+        it("should render objects with equal depth consistently", () => {
+            const order = [];
+
+            vi.spyOn(map, "renderGround")
+                .mockImplementation(() => {});
+
+            vi.spyOn(map, "getRenderables")
+                .mockReturnValue([
+                    {
+                        depth: 64,
+                        draw: () => order.push("tree")
+                    },
+                    {
+                        depth: 64,
+                        draw: () => order.push("decoration")
+                    }
+                ]);
+
+            map.render({});
+
+            expect(order).toEqual([
+                "tree",
+                "decoration"
             ]);
         });
     });
