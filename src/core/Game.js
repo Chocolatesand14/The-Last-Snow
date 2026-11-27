@@ -4,6 +4,7 @@ import { Camera } from "./Camera.js";
 import { Player } from "../entities/Player.js";
 import { TileMap } from "../world/TileMap.js";
 import { SnowyForest } from "../world/maps/SnowyForest.js";
+import { SnowParticleSystem } from "../effects/SnowParticleSystem.js";
 
 export class Game {
     constructor(canvas) {
@@ -38,6 +39,16 @@ export class Game {
 
         // Instantly center the camera on the player
         this.camera.follow(this.player);
+
+        // Create the snow particle system
+        this.snowSystem = new SnowParticleSystem(
+            this.canvas.width,
+            this.canvas.height,
+            100
+        );
+
+        // Set the initial wind speed
+        this.snowSystem.setWind(10);
 
         this.lastTime = null;
         this.gameLoop = this.gameLoop.bind(this);
@@ -89,6 +100,9 @@ export class Game {
 
         // Smoothly update the camera after resolving collisions
         this.camera.follow(this.player, deltaTime);
+
+        // Update snow particle movement
+        this.snowSystem.update(deltaTime);
     }
 
     draw() {
@@ -131,6 +145,11 @@ export class Game {
         }
 
         // Restore the original canvas state
+        this.ctx.restore();
+
+        // Render snowfall in screen coordinates
+        this.ctx.save();
+        this.snowSystem.draw(this.ctx);
         this.ctx.restore();
     }
 
