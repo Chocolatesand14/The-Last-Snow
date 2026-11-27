@@ -5,6 +5,7 @@ import { Player } from "../entities/Player.js";
 import { TileMap } from "../world/TileMap.js";
 import { SnowyForest } from "../world/maps/SnowyForest.js";
 import { SnowParticleSystem } from "../effects/SnowParticleSystem.js";
+import { WeatherOverlay } from "../effects/WeatherOverlay.js";
 import { WeatherType } from "../weather/WeatherType.js";
 import { WeatherSystem } from "../weather/WeatherSystem.js";
 import { WeatherController } from "../weather/WeatherController.js";
@@ -71,6 +72,17 @@ export class Game {
         // Apply the initial wind speed
         this.snowSystem.setWind(
             this.windSystem.currentWind
+        );
+
+        // Initialize the weather visibility overlay
+        this.weatherOverlay = new WeatherOverlay(
+            this.canvas.width,
+            this.canvas.height
+        );
+
+        // Apply the initial weather visibility
+        this.weatherOverlay.setVisibility(
+            this.weatherSystem.visibility
         );
 
         this.lastTime = null;
@@ -166,6 +178,11 @@ export class Game {
 
         // Update individual snow particle movement
         this.snowSystem.update(deltaTime);
+
+        // Synchronize the weather visibility overlay
+        this.weatherOverlay.setVisibility(
+            this.weatherSystem.visibility
+        );
     }
 
     draw() {
@@ -210,7 +227,10 @@ export class Game {
         // Restore the original canvas state
         this.ctx.restore();
 
-        // Render snowfall in screen coordinates
+        // Render the weather overlay in screen coordinates
+        this.weatherOverlay.draw(this.ctx);
+
+        // Render snowfall above the weather overlay
         this.ctx.save();
         this.snowSystem.draw(this.ctx);
         this.ctx.restore();
