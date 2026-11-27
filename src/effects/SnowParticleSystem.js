@@ -24,7 +24,24 @@ export class SnowParticleSystem {
         // Generate a falling speed between 15 and 60 pixels per second
         const speed = 15 + Math.random() * 45;
 
-        return new SnowParticle(x, y, size, speed);
+        // Generate a sway amplitude between 2 and 8 pixels
+        const swayAmplitude = 2 + Math.random() * 6;
+
+        // Generate a sway frequency between 0.2 and 0.8 Hz
+        const swayFrequency = 0.2 + Math.random() * 0.6;
+
+        // Generate an individual phase offset
+        const phase = Math.random() * Math.PI * 2;
+
+        return new SnowParticle(
+            x,
+            y,
+            size,
+            speed,
+            swayAmplitude,
+            swayFrequency,
+            phase
+        );
     }
 
     update(deltaTime) {
@@ -56,7 +73,7 @@ export class SnowParticleSystem {
         // Spawn the particle above the viewport
         const y = -(particle.size + Math.random() * 20);
 
-        // Reuse the existing particle
+        // Reuse the particle and preserve its movement properties
         particle.reset(x, y);
     }
 
