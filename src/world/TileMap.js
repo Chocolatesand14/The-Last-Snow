@@ -139,7 +139,7 @@ export class TileMap {
         return this.tiles[row]?.[column] === 2;
     }
 
-    render(ctx) {
+    renderGround(ctx) {
         // Disable smoothing to preserve pixel art
         ctx.imageSmoothingEnabled = false;
 
@@ -153,22 +153,47 @@ export class TileMap {
                 this.drawTile(ctx, tile, x, y);
             }
         }
+    }
 
-        // Render environment objects above the ground
+    getRenderables() {
+        const renderables = [];
+
+        // Collect environment objects for depth sorting
         for (let row = 0; row < this.rows; row++) {
             for (let column = 0; column < this.columns; column++) {
                 const tile = this.tiles[row][column];
                 const x = column * this.tileSize;
                 const y = row * this.tileSize;
+                const depth = y + this.tileSize;
 
                 if (tile === 1) {
-                    this.drawPineTree(ctx, x, y);
+                    renderables.push({
+                        depth,
+                        draw: (ctx) => this.drawPineTree(ctx, x, y)
+                    });
                 }
 
                 if (tile === 3) {
-                    this.drawRock(ctx, x, y);
+                    renderables.push({
+                        depth,
+                        draw: (ctx) => this.drawRock(ctx, x, y)
+                    });
                 }
             }
+        }
+
+        return renderables;
+    }
+
+    render(ctx) {
+        // Render the complete world without the player
+        this.renderGround(ctx);
+
+        const renderables = this.getRenderables();
+        renderables.sort((a, b) => a.depth - b.depth);
+
+        for (const object of renderables) {
+            object.draw(ctx);
         }
     }
 

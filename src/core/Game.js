@@ -84,11 +84,25 @@ export class Game {
             this.canvas.height
         );
 
-        // Draw the world
-        this.world.render(this.ctx);
+        // Draw the ground and paths first
+        this.world.renderGround(this.ctx);
 
-        // Draw the player above the world
-        this.player.draw(this.ctx);
+        // Collect all environment objects
+        const renderables = this.world.getRenderables();
+
+        // Add the player to the rendering queue
+        renderables.push({
+            depth: this.player.y + this.player.height,
+            draw: (ctx) => this.player.draw(ctx)
+        });
+
+        // Sort objects by their bottom Y position
+        renderables.sort((a, b) => a.depth - b.depth);
+
+        // Draw objects from back to front
+        for (const object of renderables) {
+            object.draw(this.ctx);
+        }
     }
 
     gameLoop(timestamp) {
