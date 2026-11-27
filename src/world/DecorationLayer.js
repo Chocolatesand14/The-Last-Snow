@@ -1,3 +1,4 @@
+
 export class DecorationLayer {
     constructor(mapData) {
         this.tileSize = mapData.tileSize;
@@ -19,6 +20,7 @@ export class DecorationLayer {
     }
 
     loadImage(src) {
+        // Prevent image loading errors in Node.js tests
         if (typeof Image === "undefined") {
             return null;
         }
@@ -66,11 +68,37 @@ export class DecorationLayer {
         return decorations;
     }
 
-    getRenderables() {
-        return this.decorations.map(decoration => ({
-            depth: decoration.y + decoration.height,
-            draw: (ctx) => this.drawDecoration(ctx, decoration)
-        }));
+    isVisible(decoration, camera = null) {
+        // Everything is visible when no camera is provided
+        if (!camera) {
+            return true;
+        }
+
+        // Match the rounded camera position used for rendering
+        const cameraX = Math.round(camera.x);
+        const cameraY = Math.round(camera.y);
+
+        // Check whether the decoration intersects the viewport
+        return (
+            decoration.x < cameraX + camera.width &&
+            decoration.x + decoration.width > cameraX &&
+            decoration.y < cameraY + camera.height &&
+            decoration.y + decoration.height > cameraY
+        );
+    }
+
+    getRenderables(camera = null) {
+        return this.decorations
+            // Exclude decorations outside the viewport
+            .filter(decoration =>
+                this.isVisible(decoration, camera)
+            )
+            // Create renderable objects for depth sorting
+            .map(decoration => ({
+                depth: decoration.y + decoration.height,
+                draw: (ctx) =>
+                    this.drawDecoration(ctx, decoration)
+            }));
     }
 
     drawDecoration(ctx, decoration) {
@@ -85,6 +113,7 @@ export class DecorationLayer {
             return;
         }
 
+        // Render the decoration sprite
         ctx.drawImage(
             image,
             decoration.x,
