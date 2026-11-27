@@ -1,0 +1,27 @@
+{
+  "name": "the-last-snow",
+  "version": "1.0.0",
+  "description": "*Some mysteries must be solved before they melt away.*",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Chocolatesand14/The-Last-Snow.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Chocolatesand14/The-Last-Snow/issues"
+  },
+  "homepage": "https://github.com/Chocolatesand14/The-Last-Snow#readme",
+  "devDependencies": {
+    "vitest": "^5.1.2"
+  }
+}
