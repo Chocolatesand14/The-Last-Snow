@@ -1,3 +1,4 @@
+import { DecorationLayer } from "./DecorationLayer.js";
 
 export class TileMap {
     constructor(mapData) {
@@ -40,6 +41,9 @@ export class TileMap {
         this.rockSprite = this.loadImage(
             "assets/tilesets/forest/rock.png"
         );
+
+        // Create the environment decoration layer
+        this.decorationLayer = new DecorationLayer(mapData);
     }
 
     loadImage(src) {
@@ -182,7 +186,10 @@ export class TileMap {
             }
         }
 
-        return renderables;
+        return [
+            ...renderables,
+            ...this.decorationLayer.getRenderables()
+        ];
     }
 
     render(ctx) {
