@@ -1,7 +1,10 @@
+import { Input } from "./Input.js";
+
 export class Game {
     constructor(canvas) {
         this.canvas = canvas;
         this.ctx = canvas.getContext("2d");
+        this.input = new Input();
     }
 
     start() {
@@ -9,7 +12,22 @@ export class Game {
     }
 
     update() {
-        // Update game logic
+        // Test keyboard input
+        if (this.input.isPressed("w") || this.input.isPressed("ArrowUp")) {
+            console.log("Moving up");
+        }
+
+        if (this.input.isPressed("s") || this.input.isPressed("ArrowDown")) {
+            console.log("Moving down");
+        }
+
+        if (this.input.isPressed("a") || this.input.isPressed("ArrowLeft")) {
+            console.log("Moving left");
+        }
+
+        if (this.input.isPressed("d") || this.input.isPressed("ArrowRight")) {
+            console.log("Moving right");
+        }
     }
 
     draw() {
