@@ -537,4 +537,139 @@ describe("SnowFootprintSystem", () => {
             expect(system.footprints[0].age).toBe(0);
         });
     });
+
+    describe("Configuration validation", () => {
+        it("should initialize with default configuration", () => {
+            const defaults = new SnowFootprintSystem();
+            expect(defaults.stepDistance).toBe(12);
+            expect(defaults.footOffset).toBe(4);
+            expect(defaults.footprintLifetime).toBe(60);
+        });
+
+        it.each([0, -12, NaN, Infinity, -Infinity, null])(
+            "should reject invalid step distance %s", (value) => {
+                expect(new SnowFootprintSystem(value, 4, 60).stepDistance).toBe(12);
+            }
+        );
+
+        it.each([-4, NaN, Infinity, -Infinity, null])(
+            "should reject invalid foot offset %s", (value) => {
+                expect(new SnowFootprintSystem(12, value, 60).footOffset).toBe(4);
+            }
+        );
+
+        it.each([0, -60, NaN, Infinity, -Infinity, null])(
+            "should reject invalid footprint lifetime %s", (value) => {
+                expect(new SnowFootprintSystem(12, 4, value).footprintLifetime).toBe(60);
+            }
+        );
+
+        it("should accept custom configuration", () => {
+            const custom = new SnowFootprintSystem(20, 6, 90);
+            expect(custom.stepDistance).toBe(20);
+            expect(custom.footOffset).toBe(6);
+            expect(custom.footprintLifetime).toBe(90);
+        });
+
+        it("should support zero foot offset", () => {
+            const centered = new SnowFootprintSystem(12, 0, 60);
+            centered.addFootprint(100, 50, "down");
+            expect(centered.footprints[0].x).toBe(100);
+            expect(centered.footprints[0].y).toBe(50);
+        });
+    });
+
+    describe("Movement edge cases", () => {
+        it("should preserve the original position for an unknown direction", () => {
+            expect(system.getFootPosition(100, 50, "invalid", "left"))
+                .toEqual({ x: 100, y: 50 });
+        });
+
+        it("should reject invalid directions during movement tracking", () => {
+            system.trackMovement(100, 50, 100, 74, "invalid");
+            expect(system.footprints).toHaveLength(0);
+            expect(system.accumulatedDistance).toBe(0);
+            expect(system.nextFoot).toBe("left");
+        });
+
+        it.each([
+            [NaN, 50, 100, 62],
+            [100, NaN, 100, 62],
+            [100, 50, NaN, 62],
+            [100, 50, 100, NaN],
+            [Infinity, 50, 100, 62],
+            [100, 50, 100, Infinity]
+        ])("should reject invalid movement coordinates (%s, %s, %s, %s)",
+            (previousX, previousY, currentX, currentY) => {
+                system.trackMovement(previousX, previousY, currentX, currentY, "down");
+                expect(system.footprints).toHaveLength(0);
+                expect(system.accumulatedDistance).toBe(0);
+            }
+        );
+
+        it("should reject movement distances that overflow", () => {
+            system.trackMovement(-Number.MAX_VALUE, 50, Number.MAX_VALUE, 50, "right");
+            expect(system.footprints).toHaveLength(0);
+            expect(system.accumulatedDistance).toBe(0);
+        });
+
+        it("should not alternate feet after rejected placement", () => {
+            system.addFootprint(NaN, 50, "down");
+            system.addFootprint(100, 50, "invalid");
+            expect(system.nextFoot).toBe("left");
+            system.addFootprint(100, 50, "down");
+            expect(system.footprints[0].foot).toBe("left");
+        });
+    });
+
+    describe("Weather edge cases", () => {
+        it("should use normal snowfall intensity by default", () => {
+            system.addFootprint(100, 50, "down");
+            system.update(10);
+            expect(system.footprints[0].opacity).toBeCloseTo(5 / 6);
+        });
+
+        it.each([[25, 5 / 12], [75, 0.75], [150, 1.5], [275, 4]])(
+            "should interpolate between weather presets at intensity %s",
+            (intensity, expectedMultiplier) => {
+                expect(system.getFadeMultiplier(intensity)).toBeCloseTo(expectedMultiplier);
+            }
+        );
+
+        it("should support updating an empty footprint system", () => {
+            system.update(10, 100);
+            expect(system.footprints).toHaveLength(0);
+        });
+    });
+
+    describe("Viewport edge cases", () => {
+        const camera = { x: 100, y: 100, width: 480, height: 384 };
+
+        it.each([[90, 200], [590, 200], [200, 90], [200, 494]])(
+            "should reject footprints outside the viewport at (%s, %s)", (x, y) => {
+                expect(system.isVisible(new SnowFootprint(x, y), camera)).toBe(false);
+            }
+        );
+
+        it.each([[99, 200], [581, 200], [200, 99], [200, 485]])(
+            "should preserve partially visible footprints at (%s, %s)", (x, y) => {
+                expect(system.isVisible(new SnowFootprint(x, y), camera)).toBe(true);
+            }
+        );
+
+        it("should support an explicitly null camera", () => {
+            expect(system.isVisible(new SnowFootprint(700, 600), null)).toBe(true);
+        });
+
+        it("should use rounded camera coordinates", () => {
+            const fractionalCamera = { ...camera, x: 100.6, y: 100.6 };
+            expect(system.isVisible(new SnowFootprint(97, 200), fractionalCamera)).toBe(false);
+        });
+
+        it("should support drawing an empty footprint system", () => {
+            const ctx = { fillRect: vi.fn() };
+            system.draw(ctx, camera);
+            expect(ctx.fillRect).not.toHaveBeenCalled();
+        });
+    });
 });
