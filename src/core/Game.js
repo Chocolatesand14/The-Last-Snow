@@ -11,6 +11,7 @@ import { WeatherType } from "../weather/WeatherType.js";
 import { WeatherSystem } from "../weather/WeatherSystem.js";
 import { WeatherController } from "../weather/WeatherController.js";
 import { WindSystem } from "../weather/WindSystem.js";
+import { ShadowSystem } from "../lighting/ShadowSystem.js";
 
 export class Game {
     constructor(canvas) {
@@ -80,6 +81,22 @@ export class Game {
             12,
             4,
             60
+        );
+
+        // Initialize the dynamic shadow system
+        this.shadowSystem = new ShadowSystem();
+
+        // Create a soft oval shadow beneath the player
+        this.shadowSystem.createPlayerShadow(
+            this.player,
+            24,
+            10,
+            0.3
+        );
+
+        // Apply the initial weather conditions to shadows
+        this.shadowSystem.setWeatherVisibility(
+            this.weatherSystem.visibility
         );
 
         // Initialize the weather visibility overlay
@@ -153,6 +170,9 @@ export class Game {
             previousY,
             deltaTime
         );
+
+        // Update shadows after resolving movement and weather
+        this.updateShadows();
     }
 
     updateFootprints(previousX, previousY, deltaTime) {
@@ -200,6 +220,18 @@ export class Game {
             this.player.x + offsetX,
             this.player.y + offsetY,
             direction
+        );
+    }
+
+    updateShadows() {
+        // Synchronize the player shadow with the actual position
+        this.shadowSystem.updatePlayerShadow(
+            this.player
+        );
+
+        // Synchronize shadow strength with current weather visibility
+        this.shadowSystem.setWeatherVisibility(
+            this.weatherSystem.visibility
         );
     }
 
@@ -270,6 +302,12 @@ export class Game {
 
         // Render visible footprints above the ground
         this.footprintSystem.draw(
+            this.ctx,
+            this.camera
+        );
+
+        // Render visible shadows beneath world objects
+        this.shadowSystem.draw(
             this.ctx,
             this.camera
         );
