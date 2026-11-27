@@ -195,28 +195,28 @@ export class SnowFootprintSystem {
             return 1;
         }
 
-        // Clamp intensity to supported weather limits
-        const clampedIntensity = Math.max(
-            0,
-            Math.min(350, intensity)
-        );
+        // Return the minimum fading multiplier
+        if (intensity <= FadePresets[0].intensity) {
+            return FadePresets[0].multiplier;
+        }
 
         // Interpolate between neighboring weather presets
-        for (let i = 0; i < FadePresets.length - 1; i++) {
+        for (let i = 1; i < FadePresets.length; i++) {
+            const previous = FadePresets[i - 1];
             const current = FadePresets[i];
-            const next = FadePresets[i + 1];
 
-            if (clampedIntensity <= next.intensity) {
+            if (intensity < current.intensity) {
                 const progress =
-                    (clampedIntensity - current.intensity) /
-                    (next.intensity - current.intensity);
+                    (intensity - previous.intensity) /
+                    (current.intensity - previous.intensity);
 
-                return current.multiplier +
-                    (next.multiplier - current.multiplier) *
+                return previous.multiplier +
+                    (current.multiplier - previous.multiplier) *
                     progress;
             }
         }
 
+        // Return the maximum fading multiplier
         return FadePresets[
             FadePresets.length - 1
         ].multiplier;
