@@ -5,6 +5,11 @@ import { Player } from "../entities/Player.js";
 import { TileMap } from "../world/TileMap.js";
 import { SnowyForest } from "../world/maps/SnowyForest.js";
 import { SnowParticleSystem } from "../effects/SnowParticleSystem.js";
+import { WeatherOverlay } from "../effects/WeatherOverlay.js";
+import { WeatherType } from "../weather/WeatherType.js";
+import { WeatherSystem } from "../weather/WeatherSystem.js";
+import { WeatherController } from "../weather/WeatherController.js";
+import { WindSystem } from "../weather/WindSystem.js";
 
 export class Game {
     constructor(canvas) {
@@ -40,15 +45,45 @@ export class Game {
         // Instantly center the camera on the player
         this.camera.follow(this.player);
 
+        // Initialize the dynamic weather system
+        this.weatherSystem = new WeatherSystem(
+            WeatherType.SNOWFALL
+        );
+
+        // Initialize automatic weather changes
+        this.weatherController = new WeatherController(
+            this.weatherSystem
+        );
+
+        // Initialize dynamic wind and gust variations
+        this.windSystem = new WindSystem(
+            this.weatherSystem.wind,
+            this.weatherSystem.wind * 0.5,
+            0.3
+        );
+
         // Create the snow particle system
         this.snowSystem = new SnowParticleSystem(
             this.canvas.width,
             this.canvas.height,
-            100
+            this.weatherSystem.intensity
         );
 
-        // Set the initial wind speed
-        this.snowSystem.setWind(10);
+        // Apply the initial wind speed
+        this.snowSystem.setWind(
+            this.windSystem.currentWind
+        );
+
+        // Initialize the weather visibility overlay
+        this.weatherOverlay = new WeatherOverlay(
+            this.canvas.width,
+            this.canvas.height
+        );
+
+        // Apply the initial weather visibility
+        this.weatherOverlay.setVisibility(
+            this.weatherSystem.visibility
+        );
 
         this.lastTime = null;
         this.gameLoop = this.gameLoop.bind(this);
@@ -101,8 +136,53 @@ export class Game {
         // Smoothly update the camera after resolving collisions
         this.camera.follow(this.player, deltaTime);
 
-        // Update snow particle movement
+        // Update dynamic weather and snowfall
+        this.updateWeather(deltaTime);
+    }
+
+    updateWeather(deltaTime) {
+        // Reject invalid or negative delta time
+        if (!Number.isFinite(deltaTime) || deltaTime <= 0) {
+            return;
+        }
+
+        // Advance active transitions or stable weather timing
+        if (this.weatherSystem.isTransitioning) {
+            this.weatherSystem.update(deltaTime);
+        } else {
+            this.weatherController.update(deltaTime);
+        }
+
+        // Synchronize the base wind with the current weather
+        this.windSystem.setBaseWind(
+            this.weatherSystem.wind
+        );
+
+        // Scale gust strength according to weather severity
+        this.windSystem.setGustStrength(
+            Math.abs(this.weatherSystem.wind) * 0.5
+        );
+
+        // Update dynamic wind variations
+        this.windSystem.update(deltaTime);
+
+        // Synchronize snowfall intensity with the weather
+        this.snowSystem.setIntensity(
+            this.weatherSystem.intensity
+        );
+
+        // Apply dynamic wind to the snow particles
+        this.snowSystem.setWind(
+            this.windSystem.currentWind
+        );
+
+        // Update individual snow particle movement
         this.snowSystem.update(deltaTime);
+
+        // Synchronize the weather visibility overlay
+        this.weatherOverlay.setVisibility(
+            this.weatherSystem.visibility
+        );
     }
 
     draw() {
@@ -147,7 +227,10 @@ export class Game {
         // Restore the original canvas state
         this.ctx.restore();
 
-        // Render snowfall in screen coordinates
+        // Render the weather overlay in screen coordinates
+        this.weatherOverlay.draw(this.ctx);
+
+        // Render snowfall above the weather overlay
         this.ctx.save();
         this.snowSystem.draw(this.ctx);
         this.ctx.restore();

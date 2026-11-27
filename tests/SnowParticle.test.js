@@ -93,6 +93,131 @@ describe("SnowParticle", () => {
         });
     });
 
+    describe("Natural sway movement", () => {
+        let swayingParticle;
+
+        beforeEach(() => {
+            // Create a particle with controlled sway properties
+            swayingParticle = new SnowParticle(
+                100, 50, 2, 40,
+                8, 0.5, 0
+            );
+        });
+
+        it("should disable sway by default", () => {
+            expect(particle.swayAmplitude).toBe(0);
+        });
+
+        it("should initialize with custom sway properties", () => {
+            expect(swayingParticle.swayAmplitude).toBe(8);
+            expect(swayingParticle.swayFrequency).toBe(0.5);
+            expect(swayingParticle.phase).toBe(0);
+        });
+
+        it("should start with zero elapsed time", () => {
+            expect(swayingParticle.elapsedTime).toBe(0);
+        });
+
+        it("should update elapsed time", () => {
+            swayingParticle.update(0.5);
+
+            expect(swayingParticle.elapsedTime).toBe(0.5);
+        });
+
+        it("should move horizontally without wind when sway is enabled", () => {
+            swayingParticle.update(0.5, 0);
+
+            expect(swayingParticle.x).toBeCloseTo(108);
+        });
+
+        it("should change horizontal direction over time", () => {
+            swayingParticle.update(0.5);
+
+            const previousX = swayingParticle.x;
+
+            swayingParticle.update(1);
+
+            expect(swayingParticle.x).toBeLessThan(previousX);
+            expect(swayingParticle.x).toBeCloseTo(92);
+        });
+
+        it("should return to its original horizontal position after a full period", () => {
+            swayingParticle.update(2);
+
+            expect(swayingParticle.x).toBeCloseTo(100);
+        });
+
+        it("should combine wind and sway movement", () => {
+            swayingParticle.update(0.5, 20);
+
+            expect(swayingParticle.x).toBeCloseTo(118);
+        });
+
+        it("should preserve vertical falling movement", () => {
+            swayingParticle.update(0.5);
+
+            expect(swayingParticle.y).toBe(70);
+        });
+
+        it("should support individual particle phases", () => {
+            const firstParticle = new SnowParticle(
+                100, 50, 2, 40,
+                8, 0.5, 0
+            );
+
+            const secondParticle = new SnowParticle(
+                100, 50, 2, 40,
+                8, 0.5, Math.PI
+            );
+
+            firstParticle.update(0.5);
+            secondParticle.update(0.5);
+
+            expect(firstParticle.x).toBeCloseTo(108);
+            expect(secondParticle.x).toBeCloseTo(92);
+        });
+
+        it("should remain consistent across different frame rates", () => {
+            const particle30FPS = new SnowParticle(
+                100, 50, 2, 40,
+                8, 0.5, 0
+            );
+
+            const particle60FPS = new SnowParticle(
+                100, 50, 2, 40,
+                8, 0.5, 0
+            );
+
+            // Simulate half a second at 30 FPS
+            for (let frame = 0; frame < 15; frame++) {
+                particle30FPS.update(1 / 30, 10);
+            }
+
+            // Simulate half a second at 60 FPS
+            for (let frame = 0; frame < 30; frame++) {
+                particle60FPS.update(1 / 60, 10);
+            }
+
+            expect(particle30FPS.x)
+                .toBeCloseTo(particle60FPS.x, 5);
+
+            expect(particle30FPS.y)
+                .toBeCloseTo(particle60FPS.y, 5);
+        });
+
+        it("should preserve sway properties after recycling", () => {
+            swayingParticle.update(0.5);
+            swayingParticle.reset(200, -10);
+
+            expect(swayingParticle.x).toBe(200);
+            expect(swayingParticle.y).toBe(-10);
+            expect(swayingParticle.swayAmplitude).toBe(8);
+            expect(swayingParticle.swayFrequency).toBe(0.5);
+            expect(swayingParticle.phase).toBe(0);
+            expect(swayingParticle.elapsedTime).toBe(0);
+        });
+    });
+
     describe("Particle boundaries", () => {
         it("should remain active inside the viewport", () => {
             expect(
