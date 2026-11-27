@@ -2,6 +2,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { DecorationLayer } from "../src/world/DecorationLayer.js";
 import { SnowyForest } from "../src/world/maps/SnowyForest.js";
+import { Camera } from "../src/core/Camera.js";
 
 describe("DecorationLayer", () => {
     let layer;
@@ -94,6 +95,113 @@ describe("DecorationLayer", () => {
             for (const object of layer.getRenderables()) {
                 expect(typeof object.draw).toBe("function");
             }
+        });
+    });
+
+    describe("Viewport culling", () => {
+        let camera;
+
+        beforeEach(() => {
+            camera = new Camera(96, 96, 320, 320);
+
+            // Create controlled decorations for visibility testing
+            layer.decorations = [
+                {
+                    x: 32,
+                    y: 32,
+                    type: 0,
+                    width: 24,
+                    height: 24
+                },
+                {
+                    x: 88,
+                    y: 64,
+                    type: 1,
+                    width: 24,
+                    height: 24
+                },
+                {
+                    x: 224,
+                    y: 224,
+                    type: 2,
+                    width: 24,
+                    height: 24
+                }
+            ];
+        });
+
+        it("should include fully visible decorations", () => {
+            expect(
+                layer.isVisible(layer.decorations[0], camera)
+            ).toBe(true);
+        });
+
+        it("should include partially visible decorations", () => {
+            expect(
+                layer.isVisible(layer.decorations[1], camera)
+            ).toBe(true);
+        });
+
+        it("should exclude decorations outside the viewport", () => {
+            expect(
+                layer.isVisible(layer.decorations[2], camera)
+            ).toBe(false);
+        });
+
+        it("should only return visible renderables", () => {
+            const renderables = layer.getRenderables(camera);
+
+            expect(renderables).toHaveLength(2);
+        });
+
+        it("should preserve depth information after culling", () => {
+            const renderables = layer.getRenderables(camera);
+
+            expect(
+                renderables.map(object => object.depth)
+            ).toEqual([56, 88]);
+        });
+
+        it("should update visibility when the camera moves", () => {
+            camera.x = 192;
+            camera.y = 192;
+
+            const renderables = layer.getRenderables(camera);
+
+            expect(renderables).toHaveLength(1);
+            expect(renderables[0].depth).toBe(248);
+        });
+
+        it("should return all decorations without a camera", () => {
+            expect(layer.getRenderables()).toHaveLength(3);
+        });
+
+        it("should not remove decorations from the world", () => {
+            layer.getRenderables(camera);
+
+            expect(layer.decorations).toHaveLength(3);
+        });
+
+        it("should exclude decorations touching the viewport edge", () => {
+            const decoration = {
+                x: 96,
+                y: 32,
+                width: 24,
+                height: 24
+            };
+
+            expect(
+                layer.isVisible(decoration, camera)
+            ).toBe(false);
+        });
+
+        it("should return no renderables for an empty viewport", () => {
+            camera.x = 128;
+            camera.y = 0;
+
+            expect(
+                layer.getRenderables(camera)
+            ).toHaveLength(0);
         });
     });
 

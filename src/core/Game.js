@@ -1,5 +1,6 @@
 
 import { Input } from "./Input.js";
+import { Camera } from "./Camera.js";
 import { Player } from "../entities/Player.js";
 import { TileMap } from "../world/TileMap.js";
 import { SnowyForest } from "../world/maps/SnowyForest.js";
@@ -14,9 +15,9 @@ export class Game {
         // Create the snowy forest world
         this.world = new TileMap(SnowyForest);
 
-        // Set the canvas dimensions to match the world
-        this.canvas.width = this.world.width;
-        this.canvas.height = this.world.height;
+        // Set the viewport dimensions
+        this.canvas.width = 480;
+        this.canvas.height = 384;
 
         // Disable smoothing to preserve pixel art
         this.ctx.imageSmoothingEnabled = false;
@@ -26,6 +27,17 @@ export class Game {
             this.world.spawnPoint.x,
             this.world.spawnPoint.y
         );
+
+        // Create the camera
+        this.camera = new Camera(
+            this.canvas.width,
+            this.canvas.height,
+            this.world.width,
+            this.world.height
+        );
+
+        // Instantly center the camera on the player
+        this.camera.follow(this.player);
 
         this.lastTime = null;
         this.gameLoop = this.gameLoop.bind(this);
@@ -74,6 +86,9 @@ export class Game {
         ) {
             this.player.y = nextY;
         }
+
+        // Smoothly update the camera after resolving collisions
+        this.camera.follow(this.player, deltaTime);
     }
 
     draw() {
@@ -84,11 +99,22 @@ export class Game {
             this.canvas.height
         );
 
-        // Draw the ground and paths first
-        this.world.renderGround(this.ctx);
+        // Save the current canvas state
+        this.ctx.save();
 
-        // Collect all environment objects
-        const renderables = this.world.getRenderables();
+        // Apply the camera offset using whole pixels
+        this.ctx.translate(
+            -Math.round(this.camera.x),
+            -Math.round(this.camera.y)
+        );
+
+        // Render only visible ground tiles and paths
+        this.world.renderGround(this.ctx, this.camera);
+
+        // Collect visible environment objects
+        const renderables = this.world.getRenderables(
+            this.camera
+        );
 
         // Add the player to the rendering queue
         renderables.push({
@@ -99,10 +125,13 @@ export class Game {
         // Sort objects by their bottom Y position
         renderables.sort((a, b) => a.depth - b.depth);
 
-        // Draw objects from back to front
+        // Draw visible objects from back to front
         for (const object of renderables) {
             object.draw(this.ctx);
         }
+
+        // Restore the original canvas state
+        this.ctx.restore();
     }
 
     gameLoop(timestamp) {
