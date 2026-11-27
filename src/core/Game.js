@@ -5,6 +5,7 @@ import { Player } from "../entities/Player.js";
 import { TileMap } from "../world/TileMap.js";
 import { SnowyForest } from "../world/maps/SnowyForest.js";
 import { SnowParticleSystem } from "../effects/SnowParticleSystem.js";
+import { SnowFootprintSystem } from "../effects/SnowFootprintSystem.js";
 import { WeatherOverlay } from "../effects/WeatherOverlay.js";
 import { WeatherType } from "../weather/WeatherType.js";
 import { WeatherSystem } from "../weather/WeatherSystem.js";
@@ -74,6 +75,13 @@ export class Game {
             this.windSystem.currentWind
         );
 
+        // Initialize the dynamic snow footprint system
+        this.footprintSystem = new SnowFootprintSystem(
+            12,
+            4,
+            60
+        );
+
         // Initialize the weather visibility overlay
         this.weatherOverlay = new WeatherOverlay(
             this.canvas.width,
@@ -138,6 +146,61 @@ export class Game {
 
         // Update dynamic weather and snowfall
         this.updateWeather(deltaTime);
+
+        // Update existing footprints and track actual movement
+        this.updateFootprints(
+            previousX,
+            previousY,
+            deltaTime
+        );
+    }
+
+    updateFootprints(previousX, previousY, deltaTime) {
+        // Reject invalid or negative delta time
+        if (!Number.isFinite(deltaTime) || deltaTime <= 0) {
+            return;
+        }
+
+        // Update existing footprints using current snowfall intensity
+        this.footprintSystem.update(
+            deltaTime,
+            this.weatherSystem.intensity
+        );
+
+        // Calculate actual player movement after collision handling
+        const deltaX = this.player.x - previousX;
+        const deltaY = this.player.y - previousY;
+
+        // Skip footprint creation when the player is stationary
+        if (deltaX === 0 && deltaY === 0) {
+            return;
+        }
+
+        // Determine the actual movement direction
+        let direction;
+
+        if (Math.abs(deltaX) > Math.abs(deltaY)) {
+            direction = deltaX > 0
+                ? "right"
+                : "left";
+        } else {
+            direction = deltaY > 0
+                ? "down"
+                : "up";
+        }
+
+        // Calculate the player's ground contact position
+        const offsetX = this.player.width / 2;
+        const offsetY = this.player.height - 2;
+
+        // Create footprints along the actual movement path
+        this.footprintSystem.trackMovement(
+            previousX + offsetX,
+            previousY + offsetY,
+            this.player.x + offsetX,
+            this.player.y + offsetY,
+            direction
+        );
     }
 
     updateWeather(deltaTime) {
@@ -204,6 +267,12 @@ export class Game {
 
         // Render only visible ground tiles and paths
         this.world.renderGround(this.ctx, this.camera);
+
+        // Render visible footprints above the ground
+        this.footprintSystem.draw(
+            this.ctx,
+            this.camera
+        );
 
         // Collect visible environment objects
         const renderables = this.world.getRenderables(
