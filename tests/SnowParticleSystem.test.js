@@ -140,6 +140,9 @@ describe("SnowParticleSystem", () => {
             particle.x = 100;
             particle.y = 50;
 
+            // Disable sway to isolate wind movement
+            particle.swayAmplitude = 0;
+
             system.setWind(20);
             system.update(0.5);
 
@@ -153,6 +156,100 @@ describe("SnowParticleSystem", () => {
             system.setWind(Infinity);
 
             expect(system.wind).toBe(20);
+        });
+    });
+
+    describe("Natural particle movement", () => {
+        it("should generate valid sway amplitudes", () => {
+            for (const particle of system.particles) {
+                expect(particle.swayAmplitude)
+                    .toBeGreaterThanOrEqual(2);
+
+                expect(particle.swayAmplitude)
+                    .toBeLessThanOrEqual(8);
+            }
+        });
+
+        it("should generate valid sway frequencies", () => {
+            for (const particle of system.particles) {
+                expect(particle.swayFrequency)
+                    .toBeGreaterThanOrEqual(0.2);
+
+                expect(particle.swayFrequency)
+                    .toBeLessThanOrEqual(0.8);
+            }
+        });
+
+        it("should generate valid individual phases", () => {
+            for (const particle of system.particles) {
+                expect(particle.phase)
+                    .toBeGreaterThanOrEqual(0);
+
+                expect(particle.phase)
+                    .toBeLessThan(Math.PI * 2);
+            }
+        });
+
+        it("should preserve sway properties after recycling", () => {
+            const particle = system.particles[0];
+
+            const amplitude = particle.swayAmplitude;
+            const frequency = particle.swayFrequency;
+            const phase = particle.phase;
+
+            particle.x = 100;
+            particle.y = 50;
+
+            // Advance the movement timer before recycling
+            system.update(0.5);
+
+            particle.y = 400;
+
+            system.update(0.1);
+
+            expect(particle.swayAmplitude).toBe(amplitude);
+            expect(particle.swayFrequency).toBe(frequency);
+            expect(particle.phase).toBe(phase);
+            expect(particle.elapsedTime).toBe(0);
+        });
+
+        it("should generate sway properties for new particles", () => {
+            system.setIntensity(150);
+
+            const newParticles = system.particles.slice(100);
+
+            expect(newParticles).toHaveLength(50);
+
+            for (const particle of newParticles) {
+                expect(particle.swayAmplitude)
+                    .toBeGreaterThanOrEqual(2);
+
+                expect(particle.swayAmplitude)
+                    .toBeLessThanOrEqual(8);
+
+                expect(particle.swayFrequency)
+                    .toBeGreaterThanOrEqual(0.2);
+
+                expect(particle.swayFrequency)
+                    .toBeLessThanOrEqual(0.8);
+
+                expect(particle.phase)
+                    .toBeGreaterThanOrEqual(0);
+
+                expect(particle.phase)
+                    .toBeLessThan(Math.PI * 2);
+            }
+        });
+
+        it("should update individual particle movement timers", () => {
+            const particle = system.particles[0];
+
+            particle.x = 100;
+            particle.y = 50;
+
+            system.update(0.5);
+
+            expect(particle.elapsedTime).toBeCloseTo(0.5);
         });
     });
 
