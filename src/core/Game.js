@@ -1,5 +1,8 @@
+
 import { Input } from "./Input.js";
 import { Player } from "../entities/Player.js";
+import { TileMap } from "../world/TileMap.js";
+import { SnowyForest } from "../world/maps/SnowyForest.js";
 
 export class Game {
     constructor(canvas) {
@@ -8,10 +11,20 @@ export class Game {
 
         this.input = new Input();
 
-        // Create the player at the center of the canvas
+        // Create the snowy forest world
+        this.world = new TileMap(SnowyForest);
+
+        // Set the canvas dimensions to match the world
+        this.canvas.width = this.world.width;
+        this.canvas.height = this.world.height;
+
+        // Disable smoothing to preserve pixel art
+        this.ctx.imageSmoothingEnabled = false;
+
+        // Create the player at the world spawn point
         this.player = new Player(
-            canvas.width / 2 - 16,
-            canvas.height / 2 - 16
+            this.world.spawnPoint.x,
+            this.world.spawnPoint.y
         );
 
         this.lastTime = null;
@@ -25,12 +38,12 @@ export class Game {
     update(deltaTime) {
         this.player.update(this.input, deltaTime);
 
-        // Keep the player inside the canvas
+        // Keep the player inside the world boundaries
         this.player.x = Math.max(
             0,
             Math.min(
                 this.player.x,
-                this.canvas.width - this.player.width
+                this.world.width - this.player.width
             )
         );
 
@@ -38,7 +51,7 @@ export class Game {
             0,
             Math.min(
                 this.player.y,
-                this.canvas.height - this.player.height
+                this.world.height - this.player.height
             )
         );
     }
@@ -51,15 +64,10 @@ export class Game {
             this.canvas.height
         );
 
-        // Draw the background
-        this.ctx.fillStyle = "#182b40";
-        this.ctx.fillRect(
-            0, 0,
-            this.canvas.width,
-            this.canvas.height
-        );
+        // Draw the world
+        this.world.render(this.ctx);
 
-        // Draw the player
+        // Draw the player above the world
         this.player.draw(this.ctx);
     }
 
