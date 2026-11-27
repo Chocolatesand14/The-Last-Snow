@@ -88,6 +88,9 @@ export class TileMap {
                 }
             }
         }
+
+        // Register shadows for small environment decorations
+        this.decorationLayer.registerStaticShadows(shadowSystem);
     }
 
     loadImage(src) {
