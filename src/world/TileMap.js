@@ -46,6 +46,50 @@ export class TileMap {
         this.decorationLayer = new DecorationLayer(mapData);
     }
 
+    registerStaticShadows(shadowSystem) {
+        // Rebuild environment shadows without removing the player shadow
+        shadowSystem.clearStaticShadows();
+
+        // Match shadow dimensions to each tree sprite variation
+        const treeShadowPresets = [
+            { width: 28, height: 12, opacity: 0.25 },
+            { width: 42, height: 16, opacity: 0.30 },
+            { width: 56, height: 22, opacity: 0.35 }
+        ];
+
+        // Register static shadows once when the world is loaded
+        for (let row = 0; row < this.rows; row++) {
+            for (let column = 0; column < this.columns; column++) {
+                const tile = this.tiles[row][column];
+                const centerX = column * this.tileSize + this.tileSize / 2;
+                const baseY = (row + 1) * this.tileSize - 2;
+
+                if (tile === 1) {
+                    // Use the same variation as the tree renderer
+                    const index = (column * 7 + row * 13) % this.treeSprites.length;
+                    const preset = treeShadowPresets[index];
+
+                    shadowSystem.addStaticShadow(
+                        centerX,
+                        baseY,
+                        preset.width,
+                        preset.height,
+                        preset.opacity
+                    );
+                } else if (tile === 3) {
+                    // Create a smaller ground shadow beneath rocks
+                    shadowSystem.addStaticShadow(
+                        centerX,
+                        baseY,
+                        24,
+                        10,
+                        0.25
+                    );
+                }
+            }
+        }
+    }
+
     loadImage(src) {
         // Prevent image loading errors in Node.js tests
         if (typeof Image === "undefined") {
