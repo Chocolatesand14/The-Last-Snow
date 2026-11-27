@@ -1,10 +1,25 @@
 
 export class SnowParticle {
-    constructor(x, y, size, speed) {
+    constructor(
+        x,
+        y,
+        size,
+        speed,
+        swayAmplitude = 0,
+        swayFrequency = 0.5,
+        phase = 0
+    ) {
         this.x = x;
         this.y = y;
         this.size = size;
         this.speed = speed;
+
+        // Initialize individual sway properties
+        this.swayAmplitude = swayAmplitude;
+        this.swayFrequency = swayFrequency;
+        this.phase = phase;
+
+        this.elapsedTime = 0;
     }
 
     update(deltaTime, wind = 0) {
@@ -13,11 +28,35 @@ export class SnowParticle {
             return;
         }
 
-        // Apply horizontal wind movement
+        // Calculate the previous sway offset
+        const previousSway = this.calculateSway(
+            this.elapsedTime
+        );
+
+        // Update elapsed simulation time
+        this.elapsedTime += deltaTime;
+
+        // Calculate the current sway offset
+        const currentSway = this.calculateSway(
+            this.elapsedTime
+        );
+
+        // Apply wind and individual sway movement
         this.x += wind * deltaTime;
+        this.x += currentSway - previousSway;
 
         // Apply vertical falling movement
         this.y += this.speed * deltaTime;
+    }
+
+    calculateSway(time) {
+        // Calculate the current sinusoidal offset
+        return this.swayAmplitude * Math.sin(
+            time *
+            this.swayFrequency *
+            Math.PI * 2 +
+            this.phase
+        );
     }
 
     isOutsideViewport(width, height) {
@@ -33,6 +72,9 @@ export class SnowParticle {
         // Reset position while preserving particle properties
         this.x = x;
         this.y = y;
+
+        // Reset the individual movement timer
+        this.elapsedTime = 0;
     }
 
     draw(ctx) {
