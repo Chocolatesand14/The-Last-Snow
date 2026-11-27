@@ -5,8 +5,8 @@ export class Player {
     constructor(x, y) {
         this.x = x;
         this.y = y;
-        this.width = 32;
-        this.height = 32;
+        this.width = 64;
+        this.height = 64;
         this.speed = 120;
 
         this.direction = "down";
@@ -99,6 +99,9 @@ export class Player {
     draw(ctx) {
         const sprite = this.sprites[this.currentState];
         const animation = this.animations[this.currentState];
+
+        // Preserve sharp pixel art when scaling
+        ctx.imageSmoothingEnabled = false;
 
         // Render the current animation frame
         sprite.draw(
