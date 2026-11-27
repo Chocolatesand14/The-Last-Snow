@@ -198,15 +198,58 @@ export class TileMap {
     }
 
     drawTile(ctx, tile, x, y) {
-        const size = this.tileSize;
-
-        // Draw snow-covered ground
-        ctx.fillStyle = "#e1eaf0";
-        ctx.fillRect(x, y, size, size);
+        // Draw textured snow-covered ground
+        this.drawSnow(ctx, x, y);
 
         // Draw connected snowy paths
         if (tile === 2) {
             this.drawPath(ctx, x, y);
+        }
+    }
+
+    drawSnow(ctx, x, y) {
+        const size = this.tileSize;
+
+        // Draw the base snow color
+        ctx.fillStyle = "#e1eaf0";
+        ctx.fillRect(x, y, size, size);
+
+        // Add deterministic pixel-based snow details
+        for (let py = 0; py < size; py += 2) {
+            for (let px = 0; px < size; px += 2) {
+                const noise = (
+                    Math.imul(x + px + 1, 374761393) ^
+                    Math.imul(y + py + 1, 668265263)
+                ) >>> 0;
+
+                if (noise % 29 === 0) {
+                    ctx.fillStyle = "#f4f8fc";
+                } else if (noise % 37 === 0) {
+                    ctx.fillStyle = "#cbdbe6";
+                } else if (noise % 43 === 0) {
+                    ctx.fillStyle = "#d4e2eb";
+                } else {
+                    continue;
+                }
+
+                ctx.fillRect(x + px, y + py, 2, 2);
+            }
+        }
+
+        // Add occasional small snowdrifts
+        const column = Math.floor(x / size);
+        const row = Math.floor(y / size);
+
+        if ((column * 17 + row * 31) % 7 === 0) {
+            // Draw snowdrift shadows
+            ctx.fillStyle = "#c6d7e4";
+            ctx.fillRect(x + 6, y + 22, 18, 3);
+            ctx.fillRect(x + 10, y + 25, 10, 2);
+
+            // Draw snowdrift highlights
+            ctx.fillStyle = "#f3f8fc";
+            ctx.fillRect(x + 10, y + 17, 10, 3);
+            ctx.fillRect(x + 6, y + 20, 18, 2);
         }
     }
 
