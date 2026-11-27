@@ -1,5 +1,6 @@
 
 import { Input } from "./Input.js";
+import { Camera } from "./Camera.js";
 import { Player } from "../entities/Player.js";
 import { TileMap } from "../world/TileMap.js";
 import { SnowyForest } from "../world/maps/SnowyForest.js";
@@ -14,9 +15,9 @@ export class Game {
         // Create the snowy forest world
         this.world = new TileMap(SnowyForest);
 
-        // Set the canvas dimensions to match the world
-        this.canvas.width = this.world.width;
-        this.canvas.height = this.world.height;
+        // Set the viewport dimensions
+        this.canvas.width = 480;
+        this.canvas.height = 384;
 
         // Disable smoothing to preserve pixel art
         this.ctx.imageSmoothingEnabled = false;
@@ -26,6 +27,17 @@ export class Game {
             this.world.spawnPoint.x,
             this.world.spawnPoint.y
         );
+
+        // Create the camera
+        this.camera = new Camera(
+            this.canvas.width,
+            this.canvas.height,
+            this.world.width,
+            this.world.height
+        );
+
+        // Center the camera on the player
+        this.camera.follow(this.player);
 
         this.lastTime = null;
         this.gameLoop = this.gameLoop.bind(this);
@@ -74,6 +86,9 @@ export class Game {
         ) {
             this.player.y = nextY;
         }
+
+        // Update the camera after resolving collisions
+        this.camera.follow(this.player);
     }
 
     draw() {
@@ -82,6 +97,15 @@ export class Game {
             0, 0,
             this.canvas.width,
             this.canvas.height
+        );
+
+        // Save the current canvas state
+        this.ctx.save();
+
+        // Apply the camera offset
+        this.ctx.translate(
+            -Math.round(this.camera.x),
+            -Math.round(this.camera.y)
         );
 
         // Draw the ground and paths first
@@ -103,6 +127,9 @@ export class Game {
         for (const object of renderables) {
             object.draw(this.ctx);
         }
+
+        // Restore the original canvas state
+        this.ctx.restore();
     }
 
     gameLoop(timestamp) {
