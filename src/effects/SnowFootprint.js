@@ -25,14 +25,15 @@ export class SnowFootprint {
         this.fadeAge = 0;
         this.opacity = 1;
 
-        // Define rounded pixel art footprint dimensions
+        // Define rounded footprint dimensions
         this.width = 6;
         this.height = 8;
 
         // Define soft snow indentation colors
-        this.color = "#9bb2c2";
-        this.innerColor = "#b5c9d7";
-        this.highlightColor = "#d0dfe9";
+        this.color = "#a3b9c9";
+        this.innerColor = "#b8cbd9";
+        this.highlightColor = "#d5e3ed";
+        this.shadowColor = "#8fa9bb";
     }
 
     update(deltaTime, fadeMultiplier = 1) {
@@ -116,24 +117,33 @@ export class SnowFootprint {
         // Rotate according to movement direction
         ctx.rotate(this.getRotation());
 
-        // Draw the rounded outer footprint
+        // Draw the fully rounded outer footprint
         ctx.fillStyle = this.color;
 
-        ctx.fillRect(-2, -4, 4, 1);
-        ctx.fillRect(-3, -3, 6, 5);
-        ctx.fillRect(-2, 2, 4, 2);
+        ctx.fillRect(-1, -4, 2, 1);
+        ctx.fillRect(-2, -3, 4, 1);
+        ctx.fillRect(-3, -2, 6, 4);
+        ctx.fillRect(-2, 2, 4, 1);
+        ctx.fillRect(-1, 3, 2, 1);
 
-        // Draw the softer inner snow indentation
-        ctx.fillStyle = this.innerColor;
+        // Add subtle depth to the snow indentation
+        ctx.fillStyle = this.shadowColor;
 
         ctx.fillRect(-1, -3, 2, 1);
-        ctx.fillRect(-2, -2, 4, 4);
+        ctx.fillRect(-2, -2, 4, 1);
+
+        // Draw the soft inner footprint
+        ctx.fillStyle = this.innerColor;
+
+        ctx.fillRect(-1, -1, 2, 3);
+        ctx.fillRect(-2, 0, 4, 2);
         ctx.fillRect(-1, 2, 2, 1);
 
-        // Add a subtle snow highlight
+        // Add a subtle highlight along the rounded edge
         ctx.fillStyle = this.highlightColor;
 
-        ctx.fillRect(-1, -2, 2, 1);
+        ctx.fillRect(-1, 3, 2, 1);
+        ctx.fillRect(-2, 2, 1, 1);
 
         // Restore the original canvas state
         ctx.restore();
