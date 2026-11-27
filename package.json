@@ -1,0 +1,37 @@
+{
+  "name": "the-last-snow",
+  "version": "1.0.0",
+  "description": "Some mysteries must be solved before they melt away.",
+  "main": "src/main.js",
+  "type": "module",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Chocolatesand14/The-Last-Snow.git"
+  },
+  "keywords": [
+    "game",
+    "pixel-art",
+    "adventure",
+    "javascript",
+    "snowman",
+    "html5-canvas"
+  ],
+  "author": "Chocolatesand14",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Chocolatesand14/The-Last-Snow/issues"
+  },
+  "homepage": "https://github.com/Chocolatesand14/The-Last-Snow#readme",
+  "devDependencies": {
+    "@vitest/coverage-v8": "^5.1.2",
+    "vitest": "^5.1.2"
+  }
+}
