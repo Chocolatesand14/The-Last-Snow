@@ -261,6 +261,168 @@ describe("WeatherController", () => {
         });
     });
 
+    describe("Validation and fallback handling", () => {
+        it("should fall back to snowfall duration for invalid weather types", () => {
+            random.mockReturnValue(0.5);
+
+            expect(
+                controller.getWeatherDuration("invalid")
+            ).toBe(90);
+        });
+
+        it("should fall back to snowfall transitions for invalid weather types", () => {
+            random.mockReturnValue(0);
+
+            expect(
+                controller.getNextWeather("invalid")
+            ).toBe(WeatherType.LIGHT_SNOW);
+
+            random.mockReturnValue(0.999);
+
+            expect(
+                controller.getNextWeather("invalid")
+            ).toBe(WeatherType.HEAVY_SNOW);
+        });
+
+        it("should reject invalid enabled state values", () => {
+            controller.setEnabled(null);
+            controller.setEnabled(undefined);
+            controller.setEnabled("false");
+            controller.setEnabled(0);
+
+            expect(controller.enabled).toBe(true);
+        });
+
+        it("should preserve the disabled state when receiving invalid values", () => {
+            controller.setEnabled(false);
+
+            controller.setEnabled("true");
+            controller.setEnabled(1);
+
+            expect(controller.enabled).toBe(false);
+        });
+
+        it("should support the default random generator", () => {
+            const defaultController = new WeatherController(
+                weather
+            );
+
+            expect(defaultController.random).toBe(Math.random);
+
+            expect(defaultController.weatherDuration)
+                .toBeGreaterThanOrEqual(60);
+
+            expect(defaultController.weatherDuration)
+                .toBeLessThanOrEqual(120);
+        });
+    });
+
+    describe("Manual weather synchronization", () => {
+        it("should synchronize externally changed weather", () => {
+            weather.setWeather(
+                WeatherType.BLIZZARD,
+                0
+            );
+
+            controller.update(1);
+
+            expect(controller.activeWeather)
+                .toBe(WeatherType.BLIZZARD);
+        });
+
+        it("should reset the weather timer after a manual change", () => {
+            controller.update(30);
+
+            expect(controller.elapsedTime).toBe(30);
+
+            weather.setWeather(
+                WeatherType.BLIZZARD,
+                0
+            );
+
+            controller.update(1);
+
+            expect(controller.elapsedTime).toBe(1);
+        });
+
+        it("should generate a new duration for manually changed weather", () => {
+            random.mockReturnValue(0.5);
+
+            weather.setWeather(
+                WeatherType.BLIZZARD,
+                0
+            );
+
+            controller.update(1);
+
+            expect(controller.weatherDuration).toBe(32.5);
+        });
+
+        it("should synchronize after a manual gradual transition", () => {
+            controller.update(20);
+
+            weather.setWeather(
+                WeatherType.HEAVY_SNOW,
+                5
+            );
+
+            // Complete the manually triggered transition
+            weather.update(5);
+
+            controller.update(1);
+
+            expect(controller.activeWeather)
+                .toBe(WeatherType.HEAVY_SNOW);
+
+            expect(controller.weatherDuration).toBe(45);
+            expect(controller.elapsedTime).toBe(1);
+        });
+
+        it("should synchronize manual weather changes after being re-enabled", () => {
+            controller.update(20);
+            controller.setEnabled(false);
+
+            weather.setWeather(
+                WeatherType.CLEAR,
+                0
+            );
+
+            controller.update(10);
+
+            expect(controller.elapsedTime).toBe(20);
+
+            controller.setEnabled(true);
+            controller.update(1);
+
+            expect(controller.activeWeather)
+                .toBe(WeatherType.CLEAR);
+
+            expect(controller.weatherDuration).toBe(90);
+            expect(controller.elapsedTime).toBe(1);
+        });
+
+        it("should continue automatic changes after manual synchronization", () => {
+            random.mockReturnValue(0);
+
+            weather.setWeather(
+                WeatherType.BLIZZARD,
+                0
+            );
+
+            controller.update(1);
+
+            controller.update(
+                controller.weatherDuration -
+                controller.elapsedTime
+            );
+
+            expect(weather.isTransitioning).toBe(true);
+
+            expect(weather.targetWeather)
+                .toBe(WeatherType.HEAVY_SNOW);
+        });
+    });
+
     describe("Time handling", () => {
         it("should ignore zero delta time", () => {
             controller.update(0);
