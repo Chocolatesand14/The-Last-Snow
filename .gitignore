@@ -5,6 +5,9 @@ node_modules/
 dist/
 coverage/
 
+# Generated test reports
+test-results.txt
+
 # Environment variables
 .env
 .env.local
