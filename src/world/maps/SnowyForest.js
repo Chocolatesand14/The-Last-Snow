@@ -11,6 +11,28 @@ const ROCK = 3;
 const spawnColumn = 25;
 const spawnRow = 20;
 
+// Define the initial player position
+const spawnPoint = {
+    x: spawnColumn * TILE_SIZE,
+    y: spawnRow * TILE_SIZE
+};
+
+// Define the snowdrift awakening area
+const spawnSnowDrift = {
+    x: spawnPoint.x - 32,
+    y: spawnPoint.y - 16,
+    width: 128,
+    height: 120
+};
+
+// Define the lantern beside the snowdrift
+const spawnLantern = {
+    x: spawnSnowDrift.x + spawnSnowDrift.width + 8,
+    y: spawnSnowDrift.y + 8,
+    width: 24,
+    height: 40
+};
+
 function generateForest() {
     // Create a snow-covered world
     const tiles = Array.from(
@@ -100,9 +122,18 @@ export const SnowyForest = {
     tileSize: TILE_SIZE,
 
     spawnPoint: {
-        x: spawnColumn * TILE_SIZE,
-        y: spawnRow * TILE_SIZE
+        ...spawnPoint
     },
+
+    // Configure the player awakening area
+    snowDrifts: [
+        { ...spawnSnowDrift }
+    ],
+
+    // Configure environmental lanterns
+    lanterns: [
+        { ...spawnLantern }
+    ],
 
     tiles: generateForest()
 };
