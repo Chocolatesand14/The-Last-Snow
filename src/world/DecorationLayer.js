@@ -16,6 +16,13 @@ export class DecorationLayer {
             )
         ];
 
+        // Define individual shadow properties for each decoration type
+        this.shadowPresets = [
+            { width: 18, height: 8, opacity: 0.20 },
+            { width: 20, height: 5, opacity: 0.12 },
+            { width: 16, height: 6, opacity: 0.18 }
+        ];
+
         this.decorations = this.generateDecorations();
     }
 
@@ -66,6 +73,35 @@ export class DecorationLayer {
         }
 
         return decorations;
+    }
+
+    registerStaticShadows(shadowSystem) {
+        // Register individual shadows for environment decorations
+        for (const decoration of this.decorations) {
+            const preset =
+                this.shadowPresets[decoration.type];
+
+            // Skip unsupported decoration types
+            if (!preset) {
+                continue;
+            }
+
+            // Calculate the decoration ground contact position
+            const centerX =
+                decoration.x + decoration.width / 2;
+
+            const baseY =
+                decoration.y + decoration.height - 2;
+
+            // Create a subtle static decoration shadow
+            shadowSystem.addStaticShadow(
+                centerX,
+                baseY,
+                preset.width,
+                preset.height,
+                preset.opacity
+            );
+        }
     }
 
     isVisible(decoration, camera = null) {

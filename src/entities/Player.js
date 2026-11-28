@@ -1,3 +1,4 @@
+
 import { Sprite } from "../core/Sprite.js";
 import { Animation } from "../core/Animation.js";
 
@@ -64,7 +65,7 @@ export class Player {
                 this.direction = "right";
             } else if (dy < 0) {
                 this.direction = "up";
-            } else if (dy > 0) {
+            } else {
                 this.direction = "down";
             }
         }

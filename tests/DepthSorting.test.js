@@ -16,7 +16,7 @@ describe("Depth Sorting", () => {
                 .toBeGreaterThan(0);
         });
 
-        it("should include trees, rocks and decorations", () => {
+        it("should include trees, rocks, decorations and lanterns", () => {
             const environmentCount = SnowyForest.tiles
                 .flat()
                 .filter(tile => tile === 1 || tile === 3)
@@ -25,8 +25,13 @@ describe("Depth Sorting", () => {
             const decorationCount =
                 map.decorationLayer.decorations.length;
 
+            // Include environmental lanterns
+            const lanternCount = map.lanterns.length;
+
             expect(map.getRenderables()).toHaveLength(
-                environmentCount + decorationCount
+                environmentCount +
+                decorationCount +
+                lanternCount
             );
         });
 
