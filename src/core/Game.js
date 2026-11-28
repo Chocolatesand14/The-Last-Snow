@@ -1,4 +1,3 @@
-
 import { Input } from "./Input.js";
 import { Camera } from "./Camera.js";
 import { Player } from "../entities/Player.js";
@@ -13,6 +12,10 @@ import { WeatherController } from "../weather/WeatherController.js";
 import { WindSystem } from "../weather/WindSystem.js";
 import { ShadowSystem } from "../lighting/ShadowSystem.js";
 import { LightingSystem } from "../lighting/LightingSystem.js";
+import { ScreenFade } from "../effects/ScreenFade.js";
+import { DialogueBubble } from "../ui/DialogueBubble.js";
+import { EmotionIndicator } from "../ui/EmotionIndicator.js";
+import { AwakeningSequence } from "../cutscenes/AwakeningSequence.js";
 
 export class Game {
     constructor(canvas) {
@@ -31,10 +34,11 @@ export class Game {
         // Disable smoothing to preserve pixel art
         this.ctx.imageSmoothingEnabled = false;
 
-        // Create the player at the world spawn point
+        // Create the unequipped player at the world spawn point
         this.player = new Player(
             this.world.spawnPoint.x,
-            this.world.spawnPoint.y
+            this.world.spawnPoint.y,
+            { useBaseAppearance: true }
         );
 
         // Create the camera
@@ -130,11 +134,26 @@ export class Game {
             this.weatherSystem.visibility
         );
 
+        // Initialize reusable cutscene effects
+        this.screenFade = new ScreenFade();
+        this.dialogueBubble = new DialogueBubble();
+        this.emotionIndicator = new EmotionIndicator();
+
+        // Connect the awakening sequence to the player
+        this.awakeningSequence = new AwakeningSequence({
+            player: this.player,
+            screenFade: this.screenFade,
+            dialogueBubble: this.dialogueBubble,
+            emotionIndicator: this.emotionIndicator
+        });
+
         this.lastTime = null;
         this.gameLoop = this.gameLoop.bind(this);
     }
 
     start() {
+        // Begin the introduction before scheduling the first frame
+        this.awakeningSequence.start();
         requestAnimationFrame(this.gameLoop);
     }
 
@@ -143,39 +162,45 @@ export class Game {
         const previousX = this.player.x;
         const previousY = this.player.y;
 
-        // Update player movement and animations
-        this.player.update(this.input, deltaTime);
+        // Lock player movement while the introduction is active
+        if (this.awakeningSequence?.isInputLocked) {
+            this.awakeningSequence.update(deltaTime);
+            this.player.updateAwakening(deltaTime);
+        } else {
+            // Update player movement and animations
+            this.player.update(this.input, deltaTime);
 
-        // Store the requested player position
-        const nextX = this.player.x;
-        const nextY = this.player.y;
+            // Store the requested player position
+            const nextX = this.player.x;
+            const nextY = this.player.y;
 
-        // Restore the previous player position
-        this.player.x = previousX;
-        this.player.y = previousY;
+            // Restore the previous player position
+            this.player.x = previousX;
+            this.player.y = previousY;
 
-        // Check horizontal collision
-        if (
-            this.world.canMoveTo(
-                nextX,
-                this.player.y,
-                this.player.width,
-                this.player.height
-            )
-        ) {
-            this.player.x = nextX;
-        }
+            // Check horizontal collision
+            if (
+                this.world.canMoveTo(
+                    nextX,
+                    this.player.y,
+                    this.player.width,
+                    this.player.height
+                )
+            ) {
+                this.player.x = nextX;
+            }
 
-        // Check vertical collision
-        if (
-            this.world.canMoveTo(
-                this.player.x,
-                nextY,
-                this.player.width,
-                this.player.height
-            )
-        ) {
-            this.player.y = nextY;
+            // Check vertical collision
+            if (
+                this.world.canMoveTo(
+                    this.player.x,
+                    nextY,
+                    this.player.width,
+                    this.player.height
+                )
+            ) {
+                this.player.y = nextY;
+            }
         }
 
         // Smoothly update the camera after resolving collisions
@@ -400,6 +425,17 @@ export class Game {
         this.snowSystem.draw(this.ctx);
 
         this.ctx.restore();
+
+        // Draw character indicators and dialogue above the weather
+        this.emotionIndicator?.draw(this.ctx, this.camera);
+        this.dialogueBubble?.draw(this.ctx, this.camera);
+
+        // Draw the screen fade last to cover the entire scene
+        this.screenFade?.draw(
+            this.ctx,
+            this.canvas.width,
+            this.canvas.height
+        );
     }
 
     gameLoop(timestamp) {

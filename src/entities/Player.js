@@ -3,7 +3,7 @@ import { Sprite } from "../core/Sprite.js";
 import { Animation } from "../core/Animation.js";
 
 export class Player {
-    constructor(x, y) {
+    constructor(x, y, { useBaseAppearance = false } = {}) {
         this.x = x;
         this.y = y;
         this.width = 64;
@@ -14,7 +14,7 @@ export class Player {
         this.isMoving = false;
         this.currentState = "idle";
 
-        // Load player sprite sheets
+        // Load the original player sprite sheets
         this.sprites = {
             idle: new Sprite("assets/sprites/player/idle/idle.png"),
             down: new Sprite("assets/sprites/player/walk/walk-down.png"),
@@ -22,6 +22,11 @@ export class Player {
             left: new Sprite("assets/sprites/player/walk/walk-left.png"),
             right: new Sprite("assets/sprites/player/walk/walk-right.png")
         };
+
+        // Load the unequipped player appearance
+        this.baseSprite = useBaseAppearance
+            ? new Sprite("assets/sprites/player/awakening/awakening.png")
+            : null;
 
         // Initialize player animations
         this.animations = {
@@ -31,6 +36,22 @@ export class Player {
             left: new Animation(4, 0.15),
             right: new Animation(4, 0.15)
         };
+    }
+
+    updateAwakening(deltaTime) {
+        // Keep the player stationary during the awakening
+        this.isMoving = false;
+
+        // Use the idle animation without processing input
+        if (this.currentState !== "idle") {
+            this.currentState = "idle";
+            this.animations.idle.reset();
+        }
+
+        // Advance the animation using valid frame time
+        if (Number.isFinite(deltaTime) && deltaTime > 0) {
+            this.animations.idle.update(deltaTime);
+        }
     }
 
     update(input, deltaTime) {
@@ -98,8 +119,12 @@ export class Player {
     }
 
     draw(ctx) {
-        const sprite = this.sprites[this.currentState];
-        const animation = this.animations[this.currentState];
+        // Select the unequipped or original appearance
+        const sprite =
+            this.baseSprite ?? this.sprites[this.currentState];
+
+        const animation =
+            this.animations[this.currentState];
 
         // Preserve sharp pixel art when scaling
         ctx.imageSmoothingEnabled = false;
