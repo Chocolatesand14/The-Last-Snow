@@ -14,7 +14,9 @@ export class Player {
         this.isMoving = false;
         this.currentState = "idle";
 
-        // Load the original player sprite sheets
+        this.useBaseAppearance = useBaseAppearance;
+
+        // Load the original equipped player sprites
         this.sprites = {
             idle: new Sprite("assets/sprites/player/idle/idle.png"),
             down: new Sprite("assets/sprites/player/walk/walk-down.png"),
@@ -26,6 +28,17 @@ export class Player {
         // Load the unequipped player appearance
         this.baseSprite = useBaseAppearance
             ? new Sprite("assets/sprites/player/awakening/awakening.png")
+            : null;
+
+        // Load unequipped directional sprites
+        this.baseSprites = useBaseAppearance
+            ? {
+                idle: this.baseSprite,
+                down: new Sprite("assets/sprites/player/base/walk-down.png"),
+                up: new Sprite("assets/sprites/player/base/walk-up.png"),
+                left: new Sprite("assets/sprites/player/base/walk-left.png"),
+                right: new Sprite("assets/sprites/player/base/walk-right.png")
+            }
             : null;
 
         // Initialize player animations
@@ -118,13 +131,44 @@ export class Player {
         this.animations[this.currentState].update(deltaTime);
     }
 
-    draw(ctx) {
-        // Select the unequipped or original appearance
-        const sprite =
-            this.baseSprite ?? this.sprites[this.currentState];
+    getCurrentSprite() {
+        // Preserve the original equipped appearance
+        if (!this.baseSprites) {
+            return this.sprites[this.currentState];
+        }
 
-        const animation =
-            this.animations[this.currentState];
+        // Select the directional walking sprite
+        if (this.isMoving) {
+            return this.baseSprites[this.direction];
+        }
+
+        // Use the front-facing idle sprite
+        if (this.direction === "down") {
+            return this.baseSprites.idle;
+        }
+
+        // Preserve the facing direction while stationary
+        return this.baseSprites[this.direction];
+    }
+
+    getCurrentFrame() {
+        // Use a stationary directional frame when not moving
+        if (
+            this.baseSprites &&
+            !this.isMoving &&
+            this.direction !== "down"
+        ) {
+            return 0;
+        }
+
+        // Return the active animation frame
+        return this.animations[this.currentState].getFrame();
+    }
+
+    draw(ctx) {
+        // Select the current appearance and animation frame
+        const sprite = this.getCurrentSprite();
+        const frame = this.getCurrentFrame();
 
         // Preserve sharp pixel art when scaling
         ctx.imageSmoothingEnabled = false;
@@ -132,7 +176,7 @@ export class Player {
         // Render the current animation frame
         sprite.draw(
             ctx,
-            animation.getFrame(),
+            frame,
             this.x,
             this.y,
             this.width,
