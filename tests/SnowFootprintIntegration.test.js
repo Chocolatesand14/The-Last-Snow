@@ -13,12 +13,19 @@ describe("Snow footprint integration", () => {
         // Create a game instance without browser dependencies
         game = Object.create(Game.prototype);
 
-        // Mock the shadow system to isolate footprint integration tests
-        game.shadowSystem = {
-            updatePlayerShadow: vi.fn(),
-            setWeatherVisibility: vi.fn(),
-            draw: vi.fn()
-        };
+       // Mock the shadow system to isolate footprint integration tests
+game.shadowSystem = {
+    updatePlayerShadow: vi.fn(),
+    setWeatherVisibility: vi.fn(),
+    draw: vi.fn()
+};
+
+// Mock lighting dependencies
+game.lightingSystem = {
+    setWeather: vi.fn(),
+    update: vi.fn(),
+    draw: vi.fn()
+};
 
         // Initialize the real footprint and weather systems
         game.footprintSystem = new SnowFootprintSystem(

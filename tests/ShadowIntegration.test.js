@@ -15,8 +15,15 @@ describe("Shadow integration", () => {
         // Create a game instance without browser dependencies
         game = Object.create(Game.prototype);
 
-        // Initialize real game systems
-        game.shadowSystem = new ShadowSystem();
+       // Initialize real game systems
+game.shadowSystem = new ShadowSystem();
+
+// Mock lighting dependencies
+game.lightingSystem = {
+    setWeather: vi.fn(),
+    update: vi.fn(),
+    draw: vi.fn()
+};
 
         game.footprintSystem = new SnowFootprintSystem(
             12, 4, 60
