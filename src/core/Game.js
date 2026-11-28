@@ -108,6 +108,11 @@ export class Game {
         // Initialize the dynamic lighting system
         this.lightingSystem = new LightingSystem();
 
+        // Register environmental light sources
+        this.world.registerLights(
+            this.lightingSystem
+        );
+
         // Synchronize ambient lighting with the initial weather
         this.lightingSystem.setWeather(
             this.weatherSystem.currentWeather,

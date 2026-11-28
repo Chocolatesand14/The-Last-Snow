@@ -439,9 +439,44 @@ describe("Game lifecycle", () => {
                 .toBe(true);
         });
 
-        it("should initialize without individual light sources", () => {
-            expect(game.lightingSystem.lightSources)
-                .toHaveLength(0);
+        it("should initialize with environmental lantern lights", () => {
+            expect(game.lightingSystem.lightSources).toHaveLength(1);
+            expect(game.world.lanterns).toHaveLength(1);
+
+            const lantern = game.world.lanterns[0];
+            const light = game.lightingSystem.lightSources[0];
+
+            expect(light).toBe(lantern.lightSource);
+            expect(light.enabled).toBe(true);
+            expect(light.flickerEnabled).toBe(true);
+            expect(light.x).toBe(916);
+            expect(light.y).toBe(650);
+            expect(light.radius).toBe(80);
+            expect(light.intensity).toBeCloseTo(0.65);
+            expect(light.color).toBe("#ffcf85");
+        });
+
+        it("should update lantern flickering over time", () => {
+            const light = game.lightingSystem.lightSources[0];
+            const initialIntensity = light.getEffectiveIntensity();
+
+            game.updateLighting(0.1);
+
+            expect(light.getEffectiveIntensity())
+                .not.toBeCloseTo(initialIntensity);
+            expect(light.intensity).toBeCloseTo(0.65);
+        });
+
+        it("should preserve lantern lights across game frames", () => {
+            const light = game.lightingSystem.lightSources[0];
+
+            game.gameLoop(1000);
+            game.gameLoop(1016);
+            game.gameLoop(1032);
+
+            expect(game.lightingSystem.lightSources).toEqual([light]);
+            expect(light.x).toBe(916);
+            expect(light.y).toBe(650);
         });
 
         it("should initialize the weather-dependent ambient opacity", () => {
