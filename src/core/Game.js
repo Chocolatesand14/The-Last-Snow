@@ -12,6 +12,7 @@ import { WeatherSystem } from "../weather/WeatherSystem.js";
 import { WeatherController } from "../weather/WeatherController.js";
 import { WindSystem } from "../weather/WindSystem.js";
 import { ShadowSystem } from "../lighting/ShadowSystem.js";
+import { LightingSystem } from "../lighting/LightingSystem.js";
 
 export class Game {
     constructor(canvas) {
@@ -86,6 +87,11 @@ export class Game {
         // Initialize the dynamic shadow system
         this.shadowSystem = new ShadowSystem();
 
+        // Register static environment shadows
+        this.world.registerStaticShadows(
+            this.shadowSystem
+        );
+
         // Create a soft oval shadow beneath the player
         this.shadowSystem.createPlayerShadow(
             this.player,
@@ -97,6 +103,15 @@ export class Game {
         // Apply the initial weather conditions to shadows
         this.shadowSystem.setWeatherVisibility(
             this.weatherSystem.visibility
+        );
+
+        // Initialize the dynamic lighting system
+        this.lightingSystem = new LightingSystem();
+
+        // Synchronize ambient lighting with the initial weather
+        this.lightingSystem.setWeather(
+            this.weatherSystem.currentWeather,
+            0
         );
 
         // Initialize the weather visibility overlay
@@ -173,10 +188,13 @@ export class Game {
 
         // Update shadows after resolving movement and weather
         this.updateShadows();
+
+        // Update ambient transitions and dynamic light sources
+        this.updateLighting(deltaTime);
     }
 
     updateFootprints(previousX, previousY, deltaTime) {
-        // Reject invalid or negative delta time
+        // Reject invalid or non-positive delta time
         if (!Number.isFinite(deltaTime) || deltaTime <= 0) {
             return;
         }
@@ -235,8 +253,29 @@ export class Game {
         );
     }
 
+    updateLighting(deltaTime) {
+        // Reject invalid or non-positive delta time
+        if (!Number.isFinite(deltaTime) || deltaTime <= 0) {
+            return;
+        }
+
+        // Synchronize ambient lighting with the target weather
+        const weather =
+            this.weatherSystem.targetWeather ??
+            this.weatherSystem.currentWeather;
+
+        // Apply a smooth weather-dependent lighting transition
+        this.lightingSystem.setWeather(
+            weather,
+            5
+        );
+
+        // Update ambient transitions and individual light sources
+        this.lightingSystem.update(deltaTime);
+    }
+
     updateWeather(deltaTime) {
-        // Reject invalid or negative delta time
+        // Reject invalid or non-positive delta time
         if (!Number.isFinite(deltaTime) || deltaTime <= 0) {
             return;
         }
@@ -298,7 +337,10 @@ export class Game {
         );
 
         // Render only visible ground tiles and paths
-        this.world.renderGround(this.ctx, this.camera);
+        this.world.renderGround(
+            this.ctx,
+            this.camera
+        );
 
         // Render visible footprints above the ground
         this.footprintSystem.draw(
@@ -324,7 +366,9 @@ export class Game {
         });
 
         // Sort objects by their bottom Y position
-        renderables.sort((a, b) => a.depth - b.depth);
+        renderables.sort(
+            (a, b) => a.depth - b.depth
+        );
 
         // Draw visible objects from back to front
         for (const object of renderables) {
@@ -334,12 +378,22 @@ export class Game {
         // Restore the original canvas state
         this.ctx.restore();
 
+        // Render ambient lighting and dynamic world lights
+        this.lightingSystem.draw(
+            this.ctx,
+            this.canvas.width,
+            this.canvas.height,
+            this.camera
+        );
+
         // Render the weather overlay in screen coordinates
         this.weatherOverlay.draw(this.ctx);
 
         // Render snowfall above the weather overlay
         this.ctx.save();
+
         this.snowSystem.draw(this.ctx);
+
         this.ctx.restore();
     }
 
