@@ -1,4 +1,7 @@
+
 import { DecorationLayer } from "./DecorationLayer.js";
+import { SnowDrift } from "../entities/SnowDrift.js";
+import { Lantern } from "../entities/Lantern.js";
 
 export class TileMap {
     constructor(mapData) {
@@ -44,6 +47,26 @@ export class TileMap {
 
         // Create the environment decoration layer
         this.decorationLayer = new DecorationLayer(mapData);
+
+        // Initialize environmental snowdrifts
+        this.snowDrifts = (mapData.snowDrifts ?? []).map(
+            drift => new SnowDrift(
+                drift.x,
+                drift.y,
+                drift.width,
+                drift.height
+            )
+        );
+
+        // Initialize environmental lanterns
+        this.lanterns = (mapData.lanterns ?? []).map(
+            lantern => new Lantern(
+                lantern.x,
+                lantern.y,
+                lantern.width,
+                lantern.height
+            )
+        );
     }
 
     registerStaticShadows(shadowSystem) {
@@ -59,14 +82,26 @@ export class TileMap {
 
         // Register static shadows once when the world is loaded
         for (let row = 0; row < this.rows; row++) {
-            for (let column = 0; column < this.columns; column++) {
+            for (
+                let column = 0;
+                column < this.columns;
+                column++
+            ) {
                 const tile = this.tiles[row][column];
-                const centerX = column * this.tileSize + this.tileSize / 2;
-                const baseY = (row + 1) * this.tileSize - 2;
+
+                const centerX =
+                    column * this.tileSize +
+                    this.tileSize / 2;
+
+                const baseY =
+                    (row + 1) * this.tileSize - 2;
 
                 if (tile === 1) {
                     // Use the same variation as the tree renderer
-                    const index = (column * 7 + row * 13) % this.treeSprites.length;
+                    const index =
+                        (column * 7 + row * 13) %
+                        this.treeSprites.length;
+
                     const preset = treeShadowPresets[index];
 
                     shadowSystem.addStaticShadow(
@@ -90,7 +125,21 @@ export class TileMap {
         }
 
         // Register shadows for small environment decorations
-        this.decorationLayer.registerStaticShadows(shadowSystem);
+        this.decorationLayer.registerStaticShadows(
+            shadowSystem
+        );
+
+        // Register static lantern shadows
+        for (const lantern of this.lanterns) {
+            lantern.registerShadow(shadowSystem);
+        }
+    }
+
+    registerLights(lightingSystem) {
+        // Register all environmental lantern lights
+        for (const lantern of this.lanterns) {
+            lantern.registerLight(lightingSystem);
+        }
     }
 
     loadImage(src) {
@@ -141,6 +190,18 @@ export class TileMap {
     }
 
     canMoveTo(x, y, width, height) {
+        // Reject invalid positions and dimensions
+        if (
+            !Number.isFinite(x) ||
+            !Number.isFinite(y) ||
+            !Number.isFinite(width) ||
+            !Number.isFinite(height) ||
+            width <= 0 ||
+            height <= 0
+        ) {
+            return false;
+        }
+
         // Prevent the player from leaving the world
         if (
             x < 0 ||
@@ -155,17 +216,30 @@ export class TileMap {
         const collisionWidth = width / 2;
         const collisionHeight = height / 3;
 
-        const left = x + (width - collisionWidth) / 2;
-        const right = left + collisionWidth - 1;
+        const left =
+            x + (width - collisionWidth) / 2;
 
-        const top = y + height - collisionHeight;
-        const bottom = y + height - 1;
+        const right =
+            left + collisionWidth - 1;
+
+        const top =
+            y + height - collisionHeight;
+
+        const bottom =
+            y + height - 1;
 
         // Check every tile covered by the collision box
-        const startColumn = Math.floor(left / this.tileSize);
-        const endColumn = Math.floor(right / this.tileSize);
-        const startRow = Math.floor(top / this.tileSize);
-        const endRow = Math.floor(bottom / this.tileSize);
+        const startColumn =
+            Math.floor(left / this.tileSize);
+
+        const endColumn =
+            Math.floor(right / this.tileSize);
+
+        const startRow =
+            Math.floor(top / this.tileSize);
+
+        const endRow =
+            Math.floor(bottom / this.tileSize);
 
         for (let row = startRow; row <= endRow; row++) {
             for (
@@ -182,6 +256,47 @@ export class TileMap {
             }
         }
 
+        // Check collisions with solid snowdrift boundaries
+        for (const drift of this.snowDrifts) {
+            for (
+                const bounds of
+                drift.getCollisionBounds()
+            ) {
+                if (
+                    left < bounds.x + bounds.width &&
+                    right + 1 > bounds.x &&
+                    top < bounds.y + bounds.height &&
+                    bottom + 1 > bounds.y
+                ) {
+                    return false;
+                }
+            }
+        }
+
+        // Check collisions with the base of each lantern
+        for (const lantern of this.lanterns) {
+            const lanternLeft =
+                lantern.x + lantern.width * 0.15;
+
+            const lanternRight =
+                lantern.x + lantern.width * 0.85;
+
+            const lanternTop =
+                lantern.y + lantern.height * 0.75;
+
+            const lanternBottom =
+                lantern.y + lantern.height;
+
+            if (
+                left < lanternRight &&
+                right + 1 > lanternLeft &&
+                top < lanternBottom &&
+                bottom + 1 > lanternTop
+            ) {
+                return false;
+            }
+        }
+
         return true;
     }
 
@@ -193,8 +308,10 @@ export class TileMap {
     getVisibleTileBounds(camera = null, padding = 0) {
         if (!camera) {
             return {
-                startColumn: 0, endColumn: this.columns - 1,
-                startRow: 0, endRow: this.rows - 1
+                startColumn: 0,
+                endColumn: this.columns - 1,
+                startRow: 0,
+                endRow: this.rows - 1
             };
         }
 
@@ -203,10 +320,35 @@ export class TileMap {
         const y = Math.round(camera.y);
 
         return {
-            startColumn: Math.max(0, Math.floor((x - padding) / this.tileSize)),
-            endColumn: Math.min(this.columns - 1, Math.ceil((x + camera.width + padding) / this.tileSize) - 1),
-            startRow: Math.max(0, Math.floor((y - padding) / this.tileSize)),
-            endRow: Math.min(this.rows - 1, Math.ceil((y + camera.height + padding) / this.tileSize) - 1)
+            startColumn: Math.max(
+                0,
+                Math.floor(
+                    (x - padding) / this.tileSize
+                )
+            ),
+
+            endColumn: Math.min(
+                this.columns - 1,
+                Math.ceil(
+                    (x + camera.width + padding) /
+                    this.tileSize
+                ) - 1
+            ),
+
+            startRow: Math.max(
+                0,
+                Math.floor(
+                    (y - padding) / this.tileSize
+                )
+            ),
+
+            endRow: Math.min(
+                this.rows - 1,
+                Math.ceil(
+                    (y + camera.height + padding) /
+                    this.tileSize
+                ) - 1
+            )
         };
     }
 
@@ -228,16 +370,33 @@ export class TileMap {
     renderGround(ctx, camera = null) {
         ctx.imageSmoothingEnabled = false;
 
-        const { startColumn, endColumn, startRow, endRow } =
-            this.getVisibleTileBounds(camera);
+        const {
+            startColumn,
+            endColumn,
+            startRow,
+            endRow
+        } = this.getVisibleTileBounds(camera);
 
         // Render only visible ground tiles
         for (let row = startRow; row <= endRow; row++) {
-            for (let column = startColumn; column <= endColumn; column++) {
+            for (
+                let column = startColumn;
+                column <= endColumn;
+                column++
+            ) {
                 this.drawTile(
-                    ctx, this.tiles[row][column],
-                    column * this.tileSize, row * this.tileSize
+                    ctx,
+                    this.tiles[row][column],
+                    column * this.tileSize,
+                    row * this.tileSize
                 );
+            }
+        }
+
+        // Render snowdrifts beneath footprints and the player
+        for (const drift of this.snowDrifts) {
+            if (drift.isVisible(camera)) {
+                drift.draw(ctx);
             }
         }
     }
@@ -247,45 +406,111 @@ export class TileMap {
 
         // Include oversized sprites whose base is outside the viewport
         const padding = Math.max(
-            this.tileSize, 32,
-            ...this.treeSprites.map(tree => Math.max(tree.width, tree.height))
+            this.tileSize,
+            32,
+            ...this.treeSprites.map(
+                tree => Math.max(
+                    tree.width,
+                    tree.height
+                )
+            )
         );
-        const { startColumn, endColumn, startRow, endRow } =
-            this.getVisibleTileBounds(camera, padding);
+
+        const {
+            startColumn,
+            endColumn,
+            startRow,
+            endRow
+        } = this.getVisibleTileBounds(camera, padding);
 
         for (let row = startRow; row <= endRow; row++) {
-            for (let column = startColumn; column <= endColumn; column++) {
+            for (
+                let column = startColumn;
+                column <= endColumn;
+                column++
+            ) {
                 const tile = this.tiles[row][column];
+
                 const x = column * this.tileSize;
                 const y = row * this.tileSize;
                 const depth = y + this.tileSize;
 
                 if (tile === 1) {
-                    const index = (column * 7 + row * 13) % this.treeSprites.length;
+                    const index =
+                        (column * 7 + row * 13) %
+                        this.treeSprites.length;
+
                     const tree = this.treeSprites[index];
-                    const drawX = Math.round(x + (this.tileSize - tree.width) / 2);
+
+                    const drawX = Math.round(
+                        x + (this.tileSize - tree.width) / 2
+                    );
+
                     const drawY = depth - tree.height;
 
                     // Include both sprite and fallback bounds
-                    if (this.isVisible(drawX, drawY, tree.width, tree.height, camera) ||
-                        this.isVisible(x + 2, y - 10, 28, 40, camera)) {
+                    if (
+                        this.isVisible(
+                            drawX,
+                            drawY,
+                            tree.width,
+                            tree.height,
+                            camera
+                        ) ||
+                        this.isVisible(
+                            x + 2,
+                            y - 10,
+                            28,
+                            40,
+                            camera
+                        )
+                    ) {
                         renderables.push({
                             depth,
-                            draw: (ctx) => this.drawPineTree(ctx, x, y)
+                            draw: (ctx) =>
+                                this.drawPineTree(ctx, x, y)
                         });
                     }
                 }
 
                 if (tile === 3) {
-                    const drawX = Math.round(x + (this.tileSize - 32) / 2);
-                    if (this.isVisible(drawX, depth - 32, 32, 32, camera) ||
-                        this.isVisible(x + 6, y + 12, 20, 14, camera)) {
+                    const drawX = Math.round(
+                        x + (this.tileSize - 32) / 2
+                    );
+
+                    if (
+                        this.isVisible(
+                            drawX,
+                            depth - 32,
+                            32,
+                            32,
+                            camera
+                        ) ||
+                        this.isVisible(
+                            x + 6,
+                            y + 12,
+                            20,
+                            14,
+                            camera
+                        )
+                    ) {
                         renderables.push({
                             depth,
-                            draw: (ctx) => this.drawRock(ctx, x, y)
+                            draw: (ctx) =>
+                                this.drawRock(ctx, x, y)
                         });
                     }
                 }
+            }
+        }
+
+        // Add visible lanterns to the depth-sorted rendering queue
+        for (const lantern of this.lanterns) {
+            if (lantern.isVisible(camera)) {
+                renderables.push({
+                    depth: lantern.getDepth(),
+                    draw: (ctx) => lantern.draw(ctx)
+                });
             }
         }
 
@@ -298,8 +523,12 @@ export class TileMap {
     render(ctx, camera = null) {
         // Render ground first, then depth-sorted objects
         this.renderGround(ctx, camera);
+
         const renderables = this.getRenderables(camera);
-        renderables.sort((a, b) => a.depth - b.depth);
+
+        renderables.sort(
+            (a, b) => a.depth - b.depth
+        );
 
         for (const object of renderables) {
             object.draw(ctx);
@@ -341,7 +570,12 @@ export class TileMap {
                     continue;
                 }
 
-                ctx.fillRect(x + px, y + py, 2, 2);
+                ctx.fillRect(
+                    x + px,
+                    y + py,
+                    2,
+                    2
+                );
             }
         }
 
@@ -371,7 +605,8 @@ export class TileMap {
 
         // Check connected path tiles
         const top =
-            row === 0 || this.isPath(column, row - 1);
+            row === 0 ||
+            this.isPath(column, row - 1);
 
         const bottom =
             this.isPath(column, row + 1);
@@ -432,7 +667,12 @@ export class TileMap {
                     continue;
                 }
 
-                ctx.fillRect(x + px, y + py, 2, 2);
+                ctx.fillRect(
+                    x + px,
+                    y + py,
+                    2,
+                    2
+                );
             }
         }
     }
@@ -461,7 +701,8 @@ export class TileMap {
         );
 
         // Align the tree base with the tile
-        const drawY = y + this.tileSize - tree.height;
+        const drawY =
+            y + this.tileSize - tree.height;
 
         // Draw the tree sprite
         ctx.drawImage(
@@ -490,7 +731,8 @@ export class TileMap {
         );
 
         // Align the rock with the tile
-        const drawY = y + this.tileSize - height;
+        const drawY =
+            y + this.tileSize - height;
 
         // Draw the rock sprite
         ctx.drawImage(
@@ -519,7 +761,7 @@ export class TileMap {
         // Draw snow
         ctx.fillStyle = "#f4f8fb";
         ctx.fillRect(x + 14, y - 10, 4, 3);
-        ctx.fillRect(x + 10, y - 2, 10, 3);
+        ctx.fillRect(x + 10, y - 2, 12, 3);
         ctx.fillRect(x + 6, y + 6, 14, 3);
         ctx.fillRect(x + 2, y + 14, 20, 3);
     }

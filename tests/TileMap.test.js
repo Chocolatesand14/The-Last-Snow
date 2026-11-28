@@ -229,7 +229,7 @@ describe("TileMap", () => {
             const { x, y } = SnowyForest.spawnPoint;
 
             expect(
-                forest.canMoveTo(x, y, 32, 32)
+                forest.canMoveTo(x, y, 64, 64)
             ).toBe(true);
         });
 
@@ -446,7 +446,7 @@ describe("TileMap", () => {
 
             expect(shadowSystem.staticShadows.length)
                 .toBe(
-                    tileShadowCount + decorationShadowCount
+                    tileShadowCount + decorationShadowCount + forest.lanterns.length
                 );
         });
     });
